@@ -10,14 +10,18 @@
 
 ## 快速安装
 
-在仓库根目录执行：
+直接执行（会自动拉取源码并安装到 `/usr/local/bin/scl`）：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/hjy666-mc/Swift-Craft-Launcher-CLI/refs/heads/main/install.sh)
+```
+
+如果你已经 clone 了仓库，也可以在仓库根目录执行：
 
 ```bash
 chmod +x install.sh
 ./install.sh
 ```
-
-安装完成后，二进制会放到 `/usr/local/bin/scl`。
 
 ## 手动编译
 
@@ -41,4 +45,3 @@ scl resources search --mods sodium
 ## 许可证
 
 本项目使用 AGPL-3.0 许可证，见 `LICENSE`。
-
