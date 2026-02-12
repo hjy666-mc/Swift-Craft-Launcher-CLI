@@ -5,12 +5,15 @@
 ## 环境要求
 
 - macOS
-- Xcode Command Line Tools（可用 `xcodebuild`）
+- `curl`
 - Swift Craft Launcher 主程序（部分命令依赖主程序响应）
+
+说明：默认安装流程优先下载预编译二进制，不依赖 Xcode。  
+如果下载失败，会回退到源码编译，此时才需要 Xcode Command Line Tools（`xcodebuild`）。
 
 ## 快速安装
 
-直接执行（会自动拉取源码并安装到 `/usr/local/bin/scl`）：
+直接执行（优先安装预编译二进制到 `/usr/local/bin/scl`）：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/hjy666-mc/Swift-Craft-Launcher-CLI/refs/heads/main/install.sh)
@@ -22,6 +25,8 @@ bash <(curl -fsSL https://raw.githubusercontent.com/hjy666-mc/Swift-Craft-Launch
 chmod +x install.sh
 ./install.sh
 ```
+
+若当前 shell 的 `PATH` 不含安装目录，脚本会自动写入你的 shell 配置文件（如 `~/.zprofile`）。
 
 ## 手动编译
 
