@@ -338,7 +338,7 @@ func gameStop(args: [String]) {
     guard isProcessRunning(pid) else {
         state.pidByInstance.removeValue(forKey: instance)
         saveProcessState(state)
-        fail("实例进程已不存在: \(instance)")
+        fail("实例进程不存在: \(instance)")
         return
     }
 
