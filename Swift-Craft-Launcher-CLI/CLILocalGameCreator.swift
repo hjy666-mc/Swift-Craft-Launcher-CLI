@@ -496,13 +496,15 @@ private func executeProcessors(
             for (key, value) in processorData {
                 let placeholder = "{\(key)}"
                 if out.contains(placeholder) {
-                    let replaced = value.contains(":") && !value.hasPrefix("/")
+                    let cleanValue = normalizeBracket(value)
+                    let replaced = cleanValue.contains(":") && !cleanValue.hasPrefix("/")
                         ? metaDir.appendingPathComponent(value.contains("@") ? mavenPathWithAtSymbol(value) : mavenPath(value)).path
-                        : value
+                        : cleanValue
                     out = out.replacingOccurrences(of: placeholder, with: replaced)
                 }
             }
-            return applyTemplateVars(out, gameDir: gameDir, metaDir: metaDir, gameVersion: gameVersion, instance: instance)
+            let applied = applyTemplateVars(out, gameDir: gameDir, metaDir: metaDir, gameVersion: gameVersion, instance: instance)
+            return normalizeBracket(applied)
         }
 
         var args: [String] = []
@@ -515,7 +517,7 @@ private func executeProcessors(
                 let rel = raw.contains("@") ? mavenPathWithAtSymbol(raw) : mavenPath(raw)
                 processed = metaDir.appendingPathComponent(rel).path
             }
-            args.append(processed)
+            args.append(normalizeBracket(processed))
         }
 
         if let err = downloadCoordIfMissing(jarName) { return err }
