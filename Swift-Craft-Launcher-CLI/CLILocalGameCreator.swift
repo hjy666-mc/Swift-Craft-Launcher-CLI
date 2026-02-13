@@ -637,7 +637,7 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
         }
     } else if loader == "forge" || loader == "neoforge" {
         // Modrinth launcher-meta uses "neo" for NeoForge
-        let type = (loader == "neoforge") ? "neo" : "forge"
+        let type = "forge"
         guard let profile = fetchModrinthLoaderProfile(type: type, gameVersion: gameVersion) else {
             return "获取 \(loader) 加载器信息失败（该 MC 版本可能暂无 Loader：\(gameVersion)）"
         }
