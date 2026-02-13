@@ -484,8 +484,15 @@ private func executeProcessors(
             classpath = cp.map { metaDir.appendingPathComponent(mavenPath($0)).path }
         }
 
+        func normalizeBracket(_ value: String) -> String {
+            if value.hasPrefix("[") && value.hasSuffix("]") && value.count > 2 {
+                return String(value.dropFirst().dropLast())
+            }
+            return value
+        }
+
         func processPlaceholder(_ arg: String) -> String {
-            var out = arg
+            var out = normalizeBracket(arg)
             for (key, value) in processorData {
                 let placeholder = "{\(key)}"
                 if out.contains(placeholder) {
@@ -500,7 +507,15 @@ private func executeProcessors(
 
         var args: [String] = []
         for arg in proc.args ?? [] {
-            args.append(processPlaceholder(arg))
+            var processed = processPlaceholder(arg)
+            // 普通 Maven 坐标出现在参数里时，转换为本地路径并确保下载
+            let raw = normalizeBracket(processed)
+            if raw.contains(":") && !raw.hasPrefix("/") && !raw.contains("://") {
+                if let err = downloadCoordIfMissing(raw) { return err }
+                let rel = raw.contains("@") ? mavenPathWithAtSymbol(raw) : mavenPath(raw)
+                processed = metaDir.appendingPathComponent(rel).path
+            }
+            args.append(processed)
         }
 
         if let err = downloadCoordIfMissing(jarName) { return err }
