@@ -417,6 +417,19 @@ private func executeProcessors(
     gameVersion: String,
     instance: String
 ) -> String? {
+    var processorData: [String: String] = [:]
+    processorData["SIDE"] = "client"
+    processorData["MINECRAFT_VERSION"] = gameVersion
+    processorData["LIBRARY_DIR"] = metaDir.path
+    processorData["WORKING_DIR"] = metaDir.path
+    processorData["MINECRAFT_JAR"] = metaDir.appendingPathComponent("versions/\(gameVersion)/\(gameVersion).jar").path
+    processorData["ROOT"] = gameDir.path
+    if let data {
+        for (key, entry) in data {
+            processorData[key] = entry.client
+        }
+    }
+
     func downloadCoordIfMissing(_ coord: String) -> String? {
         let rel = mavenPath(coord)
         let dest = metaDir.appendingPathComponent(rel)
@@ -458,16 +471,23 @@ private func executeProcessors(
             classpath = cp.map { metaDir.appendingPathComponent(mavenPath($0)).path }
         }
 
+        func processPlaceholder(_ arg: String) -> String {
+            var out = arg
+            for (key, value) in processorData {
+                let placeholder = "{\(key)}"
+                if out.contains(placeholder) {
+                    let replaced = value.contains(":") && !value.hasPrefix("/")
+                    ? metaDir.appendingPathComponent(mavenPath(value)).path
+                    : value
+                    out = out.replacingOccurrences(of: placeholder, with: replaced)
+                }
+            }
+            return applyTemplateVars(out, gameDir: gameDir, metaDir: metaDir, gameVersion: gameVersion, instance: instance)
+        }
+
         var args: [String] = []
         for arg in proc.args ?? [] {
-            if arg.hasPrefix("{") && arg.hasSuffix("}") {
-                let key = String(arg.dropFirst().dropLast())
-                if let entry = data?[key] {
-                    args.append(applyTemplateVars(entry.client, gameDir: gameDir, metaDir: metaDir, gameVersion: gameVersion, instance: instance))
-                }
-            } else {
-                args.append(applyTemplateVars(arg, gameDir: gameDir, metaDir: metaDir, gameVersion: gameVersion, instance: instance))
-            }
+            args.append(processPlaceholder(arg))
         }
 
         if let err = downloadCoordIfMissing(jarName) { return err }
@@ -483,7 +503,7 @@ private func executeProcessors(
         } else {
             procProcess.arguments = ["-jar", jarPath] + args
         }
-        procProcess.currentDirectoryURL = metaDir.deletingLastPathComponent()
+        procProcess.currentDirectoryURL = metaDir
         do {
             try procProcess.run()
             procProcess.waitUntilExit()
