@@ -223,6 +223,15 @@ func installModrinthModpack(
                 return "\(file.filename) | primary=\(p) | type=\(t) | url=\(file.url)"
             }.joined(separator: "\n")
             if indexURL == nil && manifestURL == nil {
+                if let fallbackResult = try await installFromVersionDependenciesOnly(
+                    selectedVersion: selected,
+                    projectId: projectId,
+                    preferredName: preferredName,
+                    tmpDir: workingDir
+                ) {
+                    result = fallbackResult
+                    return
+                }
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）",
                     tmpDir: workingDir,
@@ -469,8 +478,8 @@ private func buildDependencies(from deps: [String: String]?) -> [ModrinthIndexPr
 }
 
 private func buildDependencies(from deps: [ModrinthDependency]?) -> [ModrinthIndexProjectDependency] {
-    let required = deps?.filter { $0.dependency_type == "required" } ?? []
-    return required.map {
+    let required = deps?.filter { $0.dependency_type == "required" || $0.dependency_type == "embedded" } ?? []
+    return required.compactMap {
         ModrinthIndexProjectDependency(projectId: $0.project_id, versionId: $0.version_id, dependencyType: $0.dependency_type)
     }
 }
@@ -499,8 +508,6 @@ private func installModPackDependencies(
 ) async -> Bool {
     let required = deps.filter { $0.dependencyType == "required" }
     if required.isEmpty { return true }
-    let modsDir = profileDir.appendingPathComponent("mods", isDirectory: true)
-    try? FileManager.default.createDirectory(at: modsDir, withIntermediateDirectories: true)
     for dep in required {
         if let projectId = dep.projectId, projectId.hasPrefix("cf-") {
             let modIdStr = String(projectId.dropFirst(3))
@@ -510,6 +517,8 @@ private func installModPackDependencies(
                     let fileName = detail.fileName
                     let downloadUrl = detail.downloadUrl ?? curseForgeFallbackDownloadUrl(fileId: detail.id, fileName: fileName)
                     if let url = URL(string: downloadUrl) {
+                        let modsDir = profileDir.appendingPathComponent("mods", isDirectory: true)
+                        try? FileManager.default.createDirectory(at: modsDir, withIntermediateDirectories: true)
                         let dest = modsDir.appendingPathComponent(fileName)
                         let (fileTmp, _) = try await URLSession.shared.download(from: url)
                         try? FileManager.default.removeItem(at: dest)
@@ -523,9 +532,15 @@ private func installModPackDependencies(
             continue
         }
         if let versionId = dep.versionId {
-            if let v = await fetchModrinthVersion(id: versionId),
-               await downloadPrimaryModFile(from: v, to: modsDir) {
-                continue
+            if let v = await fetchModrinthVersion(id: versionId) {
+                let pid = v.project_id ?? ""
+                let targetDir = pid.isEmpty
+                    ? profileDir.appendingPathComponent("mods", isDirectory: true)
+                    : await resolveTargetDir(projectId: pid, profileDir: profileDir)
+                if await downloadPrimaryFile(from: v, to: targetDir) {
+                    continue
+                }
+                return false
             } else {
                 return false
             }
@@ -535,14 +550,76 @@ private func installModPackDependencies(
                 (v.game_versions ?? []).contains(gameVersion) &&
                 (v.loaders ?? []).contains(modLoader)
             }
-            if let v = compatible, await downloadPrimaryModFile(from: v, to: modsDir) {
-                continue
+            if let v = compatible {
+                let targetDir = await resolveTargetDir(projectId: projectId, profileDir: profileDir)
+                if await downloadPrimaryFile(from: v, to: targetDir) {
+                    continue
+                }
+                return false
             } else {
                 return false
             }
+        } else {
+            continue
         }
     }
     return true
+}
+
+private func installFromVersionDependenciesOnly(
+    selectedVersion: ModrinthVersion,
+    projectId: String,
+    preferredName: String?,
+    tmpDir: URL
+) async throws -> String? {
+    let deps = buildDependencies(from: selectedVersion.dependencies)
+    if deps.isEmpty { return nil }
+    let gameVersion = selectedVersion.game_versions?.first ?? ""
+    let loaders = selectedVersion.loaders ?? []
+    let modLoader: String = {
+        if loaders.contains("fabric") { return "fabric" }
+        if loaders.contains("quilt") { return "quilt" }
+        if loaders.contains("forge") { return "forge" }
+        if loaders.contains("neoforge") { return "neoforge" }
+        return "vanilla"
+    }()
+    if gameVersion.isEmpty { return nil }
+    let instanceName = (preferredName?.isEmpty == false) ? preferredName! : "modpack-\(projectId)"
+    if listInstances().contains(instanceName) {
+        return "实例已存在: \(instanceName)"
+    }
+    if let err = localCreateFullInstance(instance: instanceName, gameVersion: gameVersion, modLoader: modLoader) {
+        return "创建实例失败: \(err)"
+    }
+    let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
+    if let overridesDir = findOverridesDir(under: tmpDir) {
+        copyOverrides(from: overridesDir, to: profileDir)
+    }
+    let depsOk = await installModPackDependencies(deps, gameVersion: gameVersion, modLoader: modLoader, profileDir: profileDir)
+    if !depsOk {
+        return "安装失败: 依赖下载失败"
+    }
+    return "安装成功: 已导入实例 \(instanceName)（使用版本依赖列表）"
+}
+
+private func resolveTargetDir(projectId: String, profileDir: URL) async -> URL {
+    if let detail = await fetchModrinthProjectDetail(id: projectId) {
+        return targetDir(for: detail.project_type, profileDir: profileDir)
+    }
+    return profileDir.appendingPathComponent("mods", isDirectory: true)
+}
+
+private func targetDir(for projectType: String?, profileDir: URL) -> URL {
+    switch (projectType ?? "").lowercased() {
+    case "resourcepack":
+        return profileDir.appendingPathComponent("resourcepacks", isDirectory: true)
+    case "datapack":
+        return profileDir.appendingPathComponent("datapacks", isDirectory: true)
+    case "shader", "shaderpack":
+        return profileDir.appendingPathComponent("shaderpacks", isDirectory: true)
+    default:
+        return profileDir.appendingPathComponent("mods", isDirectory: true)
+    }
 }
 
 private func fetchModrinthVersion(id: String) async -> ModrinthVersion? {
@@ -562,12 +639,30 @@ private func fetchModrinthVersion(id: String) async -> ModrinthVersion? {
     return version
 }
 
-private func downloadPrimaryModFile(from version: ModrinthVersion, to modsDir: URL) async -> Bool {
+private func fetchModrinthProjectDetail(id: String) async -> ModrinthProjectDetail? {
+    let sem = DispatchSemaphore(value: 0)
+    var detail: ModrinthProjectDetail?
+    Task {
+        defer { sem.signal() }
+        do {
+            let url = URL(string: "https://api.modrinth.com/v2/project/\(id)")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            detail = try JSONDecoder().decode(ModrinthProjectDetail.self, from: data)
+        } catch {
+            detail = nil
+        }
+    }
+    sem.wait()
+    return detail
+}
+
+private func downloadPrimaryFile(from version: ModrinthVersion, to destDir: URL) async -> Bool {
     let file = version.files.first(where: { $0.primary == true })
         ?? version.files.first
     guard let file, let url = URL(string: file.url) else { return false }
     do {
-        let dest = modsDir.appendingPathComponent(file.filename)
+        try? FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
+        let dest = destDir.appendingPathComponent(file.filename)
         let (tmp, _) = try await URLSession.shared.download(from: url)
         try? FileManager.default.removeItem(at: dest)
         try FileManager.default.moveItem(at: tmp, to: dest)

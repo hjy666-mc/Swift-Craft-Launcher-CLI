@@ -126,6 +126,7 @@ struct ModrinthHit: Codable {
 
 struct ModrinthVersion: Codable {
     let id: String
+    let project_id: String?
     let name: String?
     let version_number: String
     let version_type: String?
