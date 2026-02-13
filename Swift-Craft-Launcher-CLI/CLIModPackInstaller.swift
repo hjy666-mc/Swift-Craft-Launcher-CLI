@@ -147,6 +147,7 @@ func installModrinthModpack(
     preferredName: String?
 ) -> String {
     fputs("[modpack-debug] installModrinthModpack marker=CLI-64333ec\n", stderr)
+    writeDebugLog("[modpack-debug] installModrinthModpack marker=CLI-64333ec")
     let sem = DispatchSemaphore(value: 0)
     var result = "安装失败"
     Task {
@@ -226,7 +227,7 @@ func installModrinthModpack(
                 return "\(file.filename) | primary=\(p) | type=\(t) | url=\(file.url)"
             }.joined(separator: "\n")
             if indexURL == nil && manifestURL == nil {
-                print("[modpack-debug] entering fallback installFromVersionDependenciesOnly")
+                writeDebugLog("[modpack-debug] entering fallback installFromVersionDependenciesOnly")
                 let fallbackResult = try await installFromVersionDependenciesOnly(
                     selectedVersion: selected,
                     projectId: projectId,
@@ -239,7 +240,7 @@ func installModrinthModpack(
                 }
                 let depsCount = selected.dependencies?.count ?? -1
                 let gvCount = selected.game_versions?.count ?? -1
-                fputs("[modpack-debug] fallback=nil depsCount=\(depsCount) gvCount=\(gvCount) err=\(selectedResult.error ?? "nil")\n", stderr)
+                writeDebugLog("[modpack-debug] fallback=nil depsCount=\(depsCount) gvCount=\(gvCount) err=\(selectedResult.error ?? "nil")")
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）",
                     tmpDir: workingDir,
@@ -414,6 +415,30 @@ private func writeDebugListing(_ listing: String) -> String? {
     }
 }
 
+private func writeDebugLog(_ line: String) {
+    let fm = FileManager.default
+    let dir = fm.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Application Support/Swift Craft Launcher/diagnostics", isDirectory: true)
+    do {
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        let file = dir.appendingPathComponent("modpack_debug.txt")
+        let entry = "[\(ISO8601DateFormatter().string(from: Date()))] \(line)\n"
+        if fm.fileExists(atPath: file.path) {
+            if let handle = try? FileHandle(forWritingTo: file) {
+                try? handle.seekToEnd()
+                if let data = entry.data(using: .utf8) {
+                    try? handle.write(contentsOf: data)
+                }
+                try? handle.close()
+                return
+            }
+        }
+        try entry.data(using: .utf8)?.write(to: file, options: .atomic)
+    } catch {
+        return
+    }
+}
+
 private func writeFailureDiagnostics(reason: String, tmpDir: URL, extra: String? = nil) -> String {
     let listing = listFilesForDebug(under: tmpDir, maxItems: 300)
     let combined = extra == nil ? listing : "\(extra!)\n\n解压文件列表:\n\(listing)"
@@ -583,7 +608,7 @@ private func installFromVersionDependenciesOnly(
     var deps = buildDependencies(from: selectedVersion.dependencies)
     var fetchErr: String? = nil
     var sourceVersion = selectedVersion
-    print("[modpack-debug] deps initial count=\(deps.count) versionId=\(selectedVersion.id)")
+    writeDebugLog("[modpack-debug] deps initial count=\(deps.count) versionId=\(selectedVersion.id)")
     if deps.isEmpty {
         let res = await fetchModrinthVersionWithStatus(id: selectedVersion.id)
         fetchErr = res.error
@@ -591,7 +616,7 @@ private func installFromVersionDependenciesOnly(
             sourceVersion = refreshed
             deps = buildDependencies(from: refreshed.dependencies)
         }
-        print("[modpack-debug] deps after refresh count=\(deps.count) fetchErr=\(fetchErr ?? "nil")")
+        writeDebugLog("[modpack-debug] deps after refresh count=\(deps.count) fetchErr=\(fetchErr ?? "nil")")
     }
     if deps.isEmpty {
         let reason = "版本依赖为空（无法安装）。依赖数量=0，fetchError=\(fetchErr ?? "nil")"
