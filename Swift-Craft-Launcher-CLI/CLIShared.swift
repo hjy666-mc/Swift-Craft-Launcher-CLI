@@ -1,19 +1,6 @@
 import Foundation
 import Darwin
 
-import Foundation
-import Darwin
-
-enum CLIGroup: String {
-    case set
-    case get
-    case game
-    case account
-    case resources
-    case completion
-    case man
-}
-
 struct CLIConfig: Codable {
     var gameDir: String
     var javaPath: String
@@ -2213,37 +2200,5 @@ func openMainApp(emitMessage: Bool = true) -> Bool {
             warn("无法自动唤起主程序，请手动打开 Swift Craft Launcher.app")
         }
         return false
-    }
-}
-
-func main() {
-    var args = Array(CommandLine.arguments.dropFirst())
-    jsonOutputEnabled = args.contains("--json")
-    args.removeAll(where: { $0 == "--json" })
-    guard let first = args.first else {
-        printGlobalHelp()
-        return
-    }
-
-    if first == "--help" || first == "-h" || first == "help" {
-        printGlobalHelp()
-        return
-    }
-
-    guard let group = CLIGroup(rawValue: first) else {
-        fail("未知命令组: \(first)")
-        printGlobalHelp()
-        exit(1)
-    }
-
-    let subArgs = Array(args.dropFirst())
-    switch group {
-    case .set: handleSet(args: subArgs)
-    case .get: handleGet(args: subArgs)
-    case .game: handleGame(args: subArgs)
-    case .account: handleAccount(args: subArgs)
-    case .resources: handleResources(args: subArgs)
-    case .completion: handleCompletion(args: subArgs)
-    case .man: handleMan(args: subArgs)
     }
 }

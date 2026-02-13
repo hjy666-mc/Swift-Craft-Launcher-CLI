@@ -1,11 +1,9 @@
-//
-//  main.swift
-//  Swift-Craft-Launcher-CLI
-//
-//  Created by 黄瑾瑜 on 2026/2/12.
-//
+import ArgumentParser
 
-import Foundation
-
-print("Hello, World!")
-
+let args = Array(CommandLine.arguments.dropFirst())
+if args.isEmpty || args == ["--help"] || args == ["-h"] || args == ["help"] {
+    jsonOutputEnabled = false
+    printGlobalHelp()
+} else {
+    SCL.main()
+}
