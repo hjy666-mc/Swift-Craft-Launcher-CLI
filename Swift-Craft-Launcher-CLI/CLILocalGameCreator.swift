@@ -367,19 +367,46 @@ private func mapModrinthProfileToLoader(_ profile: ModrinthLoaderProfile) -> Loa
 }
 
 private func applyTemplateVars(_ text: String, gameDir: URL, metaDir: URL, gameVersion: String, instance: String) -> String {
+    let workingPath = metaDir.deletingLastPathComponent()
     let variables: [String: String] = [
         "{MINECRAFT_JAR}": metaDir.appendingPathComponent("versions/\(gameVersion)/\(gameVersion).jar").path,
         "{MC_DIR}": gameDir.path,
         "{MC_VERSION}": gameVersion,
         "{GAME_DIR}": gameDir.path,
-        "{ROOT_DIR}": gameDir.deletingLastPathComponent().path,
+        "{ROOT_DIR}": workingPath.path,
+        "{ROOT}": workingPath.path,
         "{INSTALL_DIR}": metaDir.path,
         "{VERSION_NAME}": gameVersion,
         "{SIDE}": "client",
+        "{LIBRARY_DIR}": metaDir.path,
     ]
     var result = text
     for (k, v) in variables { result = result.replacingOccurrences(of: k, with: v) }
     return result
+}
+
+private func readJarMainClass(jarPath: String) -> String? {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+    process.arguments = ["-p", jarPath, "META-INF/MANIFEST.MF"]
+    let pipe = Pipe()
+    process.standardOutput = pipe
+    process.standardError = Pipe()
+    do {
+        try process.run()
+        process.waitUntilExit()
+    } catch {
+        return nil
+    }
+    guard process.terminationStatus == 0 else { return nil }
+    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+    guard let text = String(data: data, encoding: .utf8) else { return nil }
+    for line in text.split(separator: "\n") {
+        if line.lowercased().hasPrefix("main-class:") {
+            return line.split(separator: ":", maxSplits: 1).last?.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+    return nil
 }
 
 private func executeProcessors(
@@ -421,7 +448,12 @@ private func executeProcessors(
 
         let procProcess = Process()
         procProcess.executableURL = URL(fileURLWithPath: java)
-        procProcess.arguments = ["-cp", ([jarPath] + classpath).joined(separator: ":"), jarName] + args
+        let mainClass = readJarMainClass(jarPath: jarPath)
+        if let mainClass {
+            procProcess.arguments = ["-cp", ([jarPath] + classpath).joined(separator: ":"), mainClass] + args
+        } else {
+            procProcess.arguments = ["-jar", jarPath] + args
+        }
         procProcess.currentDirectoryURL = gameDir
         do {
             try procProcess.run()
