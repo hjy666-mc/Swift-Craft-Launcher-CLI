@@ -576,8 +576,8 @@ func gameCreate(args: [String]) {
     let showProgress = !jsonOutputEnabled && isatty(STDOUT_FILENO) == 1
     let renderer = InstallProgressRenderer(enabled: showProgress)
 
-    // 本地直装：vanilla/fabric/quilt
-    if ["vanilla", "fabric", "quilt"].contains(modLoader) {
+    // 本地直装：vanilla/fabric/quilt/forge/neoforge
+    if ["vanilla", "fabric", "quilt", "forge", "neoforge"].contains(modLoader) {
         renderer.start(title: "本地创建实例")
         if let localErr = localCreateFullInstance(instance: name, gameVersion: gameVersion, modLoader: modLoader) {
             renderer.finish(success: false, message: "本地创建失败")
@@ -600,47 +600,8 @@ func gameCreate(args: [String]) {
         return
     }
 
-    // forge / neoforge 暂未本地实现，仅在主程序已运行时可尝试请求
-    renderer.start(title: "尝试请求主程序创建实例（不会自动唤起）")
-    ensureMainAppCreateGameResponseObserver()
-    let requestId = UUID().uuidString
-    let responseFile = fm.temporaryDirectory
-        .appendingPathComponent("swiftcraftlauncher_game_create_response", isDirectory: true)
-        .appendingPathComponent("\(requestId).json", isDirectory: false).path
-    requestMainAppCreateGame(
-        requestId: requestId,
-        name: name,
-        gameVersion: gameVersion,
-        modLoader: modLoader,
-        responseFile: responseFile
-    )
-    renderer.update(progress: 0.2, title: "等待主程序创建实例")
-    let result = waitMainAppCreateGameResult(
-        requestId: requestId,
-        responseFile: responseFile,
-        timeout: 3.0
-    ) { elapsed in
-        let p = min(0.95, 0.2 + (elapsed / 300.0) * 0.7)
-        renderer.update(progress: p, title: "等待主程序创建实例")
-    }
-
-    if result.ok {
-        renderer.finish(success: true, message: "实例创建成功")
-        let actualName = (result.instance?.isEmpty == false) ? result.instance! : name
-        if jsonOutputEnabled {
-            printJSON([
-                "ok": true,
-                "instance": actualName,
-                "gameVersion": gameVersion,
-                "modLoader": modLoader,
-            ])
-        } else {
-            success("已创建实例: \(actualName) (MC=\(gameVersion), Loader=\(modLoader))")
-        }
-    } else {
-        renderer.finish(success: false, message: "创建失败")
-        fail("实例创建失败：本地暂不支持 \(modLoader)，且主程序未响应")
-    }
+    renderer.finish(success: false, message: "创建失败")
+    fail("实例创建失败：不支持的加载器 \(modLoader)")
 }
 
 func handleAccount(args: [String]) {

@@ -510,7 +510,7 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
             loaderGameArgs = mapped.gameArgs
             loaderJvmArgs = mapped.jvmArgs
         } else {
-            return "获取 Fabric 加载器信息失败"
+            return "获取 Fabric 加载器信息失败（该 MC 版本可能暂无 Fabric Loader：\(gameVersion)）"
         }
     } else if loader == "quilt" {
         if let profile = fetchQuiltLoaderProfile(gameVersion: gameVersion) {
@@ -525,12 +525,12 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
             loaderGameArgs = mapped.gameArgs
             loaderJvmArgs = mapped.jvmArgs
         } else {
-            return "获取 Quilt 加载器信息失败"
+            return "获取 Quilt 加载器信息失败（该 MC 版本可能暂无 Quilt Loader：\(gameVersion)）"
         }
     } else if loader == "forge" || loader == "neoforge" {
         let type = (loader == "neoforge") ? "neoforge" : "forge"
         guard let profile = fetchModrinthLoaderProfile(type: type, gameVersion: gameVersion) else {
-            return "获取 \(loader) 加载器信息失败"
+            return "获取 \(loader) 加载器信息失败（该 MC 版本可能暂无 Loader：\(gameVersion)）"
         }
         forgeProfile = profile
         loaderMainClass = profile.mainClass
