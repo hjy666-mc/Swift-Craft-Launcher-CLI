@@ -585,7 +585,7 @@ private func installFromVersionDependenciesOnly(
     if deps.isEmpty {
         let reason = "版本依赖为空（无法安装）。依赖数量=0，fetchError=\(fetchErr ?? "nil")"
         _ = writeFailureDiagnostics(reason: reason, tmpDir: tmpDir)
-        return nil
+        return "安装失败: \(reason)"
     }
     let gameVersion = selectedVersion.game_versions?.first ?? ""
     let loaders = selectedVersion.loaders ?? []
