@@ -158,7 +158,8 @@ func installModrinthModpack(
                 result = "未找到匹配版本"
                 return
             }
-            let selected = await fetchModrinthVersion(id: selectedBrief.id) ?? selectedBrief
+            let selectedResult = await fetchModrinthVersionWithStatus(id: selectedBrief.id)
+            let selected = selectedResult.version ?? selectedBrief
             let mrpackCandidates = selected.files.filter { $0.filename.lowercased().hasSuffix(".mrpack") }
             let mrpackPreferred = mrpackCandidates.first(where: { $0.primary == true })
             let sortedMrpacks = ([mrpackPreferred].compactMap { $0 } + mrpackCandidates).reduce(into: [ModrinthFile]()) { acc, item in
@@ -236,7 +237,7 @@ func installModrinthModpack(
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）",
                     tmpDir: workingDir,
-                    extra: "版本文件列表:\n\(versionFileList)"
+                    extra: "版本文件列表:\n\(versionFileList)\n\n版本详情拉取错误: \(selectedResult.error ?? "nil")"
                 )
                 return
             }
@@ -575,10 +576,12 @@ private func installFromVersionDependenciesOnly(
 ) async throws -> String? {
     var deps = buildDependencies(from: selectedVersion.dependencies)
     var fetchErr: String? = nil
+    var sourceVersion = selectedVersion
     if deps.isEmpty {
         let res = await fetchModrinthVersionWithStatus(id: selectedVersion.id)
         fetchErr = res.error
         if let refreshed = res.version {
+            sourceVersion = refreshed
             deps = buildDependencies(from: refreshed.dependencies)
         }
     }
@@ -587,8 +590,8 @@ private func installFromVersionDependenciesOnly(
         _ = writeFailureDiagnostics(reason: reason, tmpDir: tmpDir)
         return "安装失败: \(reason)"
     }
-    let gameVersion = selectedVersion.game_versions?.first ?? ""
-    let loaders = selectedVersion.loaders ?? []
+    let gameVersion = sourceVersion.game_versions?.first ?? ""
+    let loaders = sourceVersion.loaders ?? []
     let modLoader: String = {
         if loaders.contains("fabric") { return "fabric" }
         if loaders.contains("quilt") { return "quilt" }
@@ -596,7 +599,11 @@ private func installFromVersionDependenciesOnly(
         if loaders.contains("neoforge") { return "neoforge" }
         return "vanilla"
     }()
-    if gameVersion.isEmpty { return nil }
+    if gameVersion.isEmpty {
+        let reason = "版本未包含 game_versions（无法安装）。fetchError=\(fetchErr ?? "nil")"
+        _ = writeFailureDiagnostics(reason: reason, tmpDir: tmpDir)
+        return "安装失败: \(reason)"
+    }
     let instanceName = (preferredName?.isEmpty == false) ? preferredName! : "modpack-\(projectId)"
     if listInstances().contains(instanceName) {
         return "实例已存在: \(instanceName)"
@@ -678,8 +685,15 @@ private func fetchModrinthProjectDetail(id: String) async -> ModrinthProjectDeta
 
 private func fetchModrinthData(from url: URL) async throws -> Data {
     var req = URLRequest(url: url)
+    req.setValue("application/json", forHTTPHeaderField: "Accept")
     req.setValue("Swift-Craft-Launcher-CLI", forHTTPHeaderField: "User-Agent")
-    let (data, _) = try await URLSession.shared.data(for: req)
+    let (data, response) = try await URLSession.shared.data(for: req)
+    if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
+        let snippet = String(data: data, encoding: .utf8)?.prefix(200) ?? ""
+        throw NSError(domain: "Modrinth", code: http.statusCode, userInfo: [
+            NSLocalizedDescriptionKey: "Modrinth API 请求失败: \(http.statusCode) \(snippet)"
+        ])
+    }
     return data
 }
 
