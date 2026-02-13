@@ -226,6 +226,7 @@ func installModrinthModpack(
                 return "\(file.filename) | primary=\(p) | type=\(t) | url=\(file.url)"
             }.joined(separator: "\n")
             if indexURL == nil && manifestURL == nil {
+                print("[modpack-debug] entering fallback installFromVersionDependenciesOnly")
                 let fallbackResult = try await installFromVersionDependenciesOnly(
                     selectedVersion: selected,
                     projectId: projectId,
@@ -582,7 +583,7 @@ private func installFromVersionDependenciesOnly(
     var deps = buildDependencies(from: selectedVersion.dependencies)
     var fetchErr: String? = nil
     var sourceVersion = selectedVersion
-    fputs("[modpack-debug] deps initial count=\(deps.count) versionId=\(selectedVersion.id)\n", stderr)
+    print("[modpack-debug] deps initial count=\(deps.count) versionId=\(selectedVersion.id)")
     if deps.isEmpty {
         let res = await fetchModrinthVersionWithStatus(id: selectedVersion.id)
         fetchErr = res.error
@@ -590,7 +591,7 @@ private func installFromVersionDependenciesOnly(
             sourceVersion = refreshed
             deps = buildDependencies(from: refreshed.dependencies)
         }
-        fputs("[modpack-debug] deps after refresh count=\(deps.count) fetchErr=\(fetchErr ?? "nil")\n", stderr)
+        print("[modpack-debug] deps after refresh count=\(deps.count) fetchErr=\(fetchErr ?? "nil")")
     }
     if deps.isEmpty {
         let reason = "版本依赖为空（无法安装）。依赖数量=0，fetchError=\(fetchErr ?? "nil")"
