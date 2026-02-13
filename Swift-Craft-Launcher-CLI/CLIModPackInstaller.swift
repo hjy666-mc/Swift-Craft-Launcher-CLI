@@ -223,17 +223,8 @@ func installModrinthModpack(
                 return "\(file.filename) | primary=\(p) | type=\(t) | url=\(file.url)"
             }.joined(separator: "\n")
             if indexURL == nil && manifestURL == nil {
-                if let fallbackResult = try await installOverridesOnly(
-                    selectedVersion: selected,
-                    projectId: projectId,
-                    preferredName: preferredName,
-                    tmpDir: workingDir
-                ) {
-                    result = fallbackResult
-                    return
-                }
                 result = writeFailureDiagnostics(
-                    reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式）",
+                    reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）",
                     tmpDir: workingDir,
                     extra: "版本文件列表:\n\(versionFileList)"
                 )
@@ -337,17 +328,8 @@ func installModrinthModpack(
                 return
             }
 
-            if let fallbackResult = try await installOverridesOnly(
-                selectedVersion: selected,
-                projectId: projectId,
-                preferredName: preferredName,
-                tmpDir: workingDir
-            ) {
-                result = fallbackResult
-                return
-            }
             result = writeFailureDiagnostics(
-                reason: "索引文件解析失败（可能格式不支持）",
+                reason: "索引文件解析失败（可能格式不支持，未安装）",
                 tmpDir: workingDir,
                 extra: "版本文件列表:\n\(versionFileList)"
             )
