@@ -361,10 +361,14 @@ struct CompletionCommand: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "completion", abstract: "生成 shell 补全脚本")
     @OptionGroup var global: GlobalOptions
     @Argument var shell: CompletionShell?
+    @Flag(name: .long, help: "仅输出补全脚本到 stdout") var printOnly = false
 
     mutating func run() throws {
         applyGlobal(global)
-        handleCompletion(args: shell.map { [$0.rawValue] } ?? [])
+        var args: [String] = []
+        if printOnly { args.append("--print") }
+        if let shell { args.append(shell.rawValue) }
+        handleCompletion(args: args)
     }
 }
 

@@ -20,7 +20,7 @@ func printGlobalHelp() {
 \(stylize("╚══════╝ ╚═════╝╚══════╝     ╚═════╝╚══════╝╚═╝", ANSI.bold + ANSI.cyan))
 
 \(stylize("Swift Craft Launcher CLI", ANSI.bold + ANSI.cyan))
-\(stylize("现代化 Minecraft 启动器命令行工具", ANSI.gray))
+\(stylize("Minecraft 启动器的现代化命令行工具", ANSI.gray))
 
 \(stylize("基础语法", ANSI.bold + ANSI.blue))
   scl <命令组> <子命令> [参数] [选项]
@@ -66,26 +66,23 @@ func printCompletionHelp() {
 \(stylize("COMPLETION 命令", ANSI.bold + ANSI.cyan))
 
 \(stylize("scl completion <zsh|bash|fish>", ANSI.bold + ANSI.blue))
-  输出对应 shell 的 Tab 补全脚本
+  自动安装并写入对应 shell 配置文件
+
+\(stylize("scl completion --print <zsh|bash|fish>", ANSI.bold + ANSI.blue))
+  仅输出补全脚本到 stdout
 
 \(stylize("快速启用（当前会话）", ANSI.bold + ANSI.blue))
-  zsh:  source <(scl completion zsh)
-  bash: source <(scl completion bash)
-  fish: scl completion fish | source
+  zsh:  source <(scl completion --print zsh)
+  bash: source <(scl completion --print bash)
+  fish: scl completion --print fish | source
 
 \(stylize("持久化启用", ANSI.bold + ANSI.blue))
   zsh:
-    mkdir -p ~/.zfunc
-    scl completion zsh > ~/.zfunc/_scl
-    echo 'fpath=(~/.zfunc $fpath)' >> ~/.zshrc
-    echo 'autoload -Uz compinit && compinit' >> ~/.zshrc
+    scl completion zsh
   bash:
-    mkdir -p ~/.bash_completion.d
-    scl completion bash > ~/.bash_completion.d/scl
-    echo 'source ~/.bash_completion.d/scl' >> ~/.bashrc
+    scl completion bash
   fish:
-    mkdir -p ~/.config/fish/completions
-    scl completion fish > ~/.config/fish/completions/scl.fish
+    scl completion fish
 """)
 }
 

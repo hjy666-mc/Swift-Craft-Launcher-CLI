@@ -7,17 +7,100 @@ func handleCompletion(args: [String]) {
         return
     }
 
-    let shell = args[0].lowercased()
+    let wantsPrint = args.contains("--print")
+    let shell = args.first { !$0.hasPrefix("-") }?.lowercased() ?? ""
+    if shell.isEmpty {
+        fail("请指定 shell: zsh/bash/fish")
+        return
+    }
+
+    if wantsPrint {
+        switch shell {
+        case "zsh":
+            print(zshCompletionScript())
+        case "bash":
+            print(bashCompletionScript())
+        case "fish":
+            print(fishCompletionScript())
+        default:
+            fail("不支持的 shell: \(shell)，请使用 zsh/bash/fish")
+        }
+        return
+    }
+
     switch shell {
     case "zsh":
-        print(zshCompletionScript())
+        installZshCompletion()
     case "bash":
-        print(bashCompletionScript())
+        installBashCompletion()
     case "fish":
-        print(fishCompletionScript())
+        installFishCompletion()
     default:
         fail("不支持的 shell: \(shell)，请使用 zsh/bash/fish")
     }
+}
+
+private func installZshCompletion() {
+    let fm = FileManager.default
+    let home = fm.homeDirectoryForCurrentUser
+    let dir = home.appendingPathComponent(".zsh/completions", isDirectory: true)
+    let scriptPath = dir.appendingPathComponent("_scl")
+    do {
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        try zshCompletionScript().write(to: scriptPath, atomically: true, encoding: .utf8)
+    } catch {
+        fail("安装 zsh 补全失败: \(error.localizedDescription)")
+        return
+    }
+
+    let rcPath = home.appendingPathComponent(".zshrc")
+    let marker = "# scl completion"
+    let block = "\n\(marker)\nif ! [[ \"$fpath\" == *\"$HOME/.zsh/completions\"* ]]; then\n  fpath=(\"$HOME/.zsh/completions\" $fpath)\nfi\nautoload -Uz compinit && compinit\n"
+    appendBlockIfMissing(fileURL: rcPath, marker: marker, block: block)
+    success("已安装 zsh 补全: \(scriptPath.path)\n请新开终端或执行: source ~/.zshrc")
+}
+
+private func installBashCompletion() {
+    let fm = FileManager.default
+    let home = fm.homeDirectoryForCurrentUser
+    let dir = home.appendingPathComponent(".bash_completion.d", isDirectory: true)
+    let scriptPath = dir.appendingPathComponent("scl")
+    do {
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        try bashCompletionScript().write(to: scriptPath, atomically: true, encoding: .utf8)
+    } catch {
+        fail("安装 bash 补全失败: \(error.localizedDescription)")
+        return
+    }
+
+    let rcPath = home.appendingPathComponent(".bashrc")
+    let marker = "# scl completion"
+    let block = "\n\(marker)\nif [ -f \"$HOME/.bash_completion.d/scl\" ]; then\n  source \"$HOME/.bash_completion.d/scl\"\nfi\n"
+    appendBlockIfMissing(fileURL: rcPath, marker: marker, block: block)
+    success("已安装 bash 补全: \(scriptPath.path)\n请新开终端或执行: source ~/.bashrc")
+}
+
+private func installFishCompletion() {
+    let fm = FileManager.default
+    let home = fm.homeDirectoryForCurrentUser
+    let dir = home.appendingPathComponent(".config/fish/completions", isDirectory: true)
+    let scriptPath = dir.appendingPathComponent("scl.fish")
+    do {
+        try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        try fishCompletionScript().write(to: scriptPath, atomically: true, encoding: .utf8)
+    } catch {
+        fail("安装 fish 补全失败: \(error.localizedDescription)")
+        return
+    }
+    success("已安装 fish 补全: \(scriptPath.path)\n请新开终端")
+}
+
+private func appendBlockIfMissing(fileURL: URL, marker: String, block: String) {
+    let fm = FileManager.default
+    let existing = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+    if existing.contains(marker) { return }
+    let newContent = existing + block
+    try? newContent.write(to: fileURL, atomically: true, encoding: .utf8)
 }
 
 func handleMan(args: [String]) {
@@ -131,6 +214,10 @@ Subcommands:
 Generate shell completion scripts for zsh/bash/fish.
 Use:
 .B scl completion zsh|bash|fish
+Install shell completion and update config file.
+.TP
+.B scl completion --print zsh|bash|fish
+Print completion script to stdout.
 .TP
 .B man
 Print or install this man page.
@@ -222,6 +309,9 @@ Search resources from Modrinth.
 Install a resource into instance.
 .TP
 .B scl completion zsh
+Install zsh completion.
+.TP
+.B scl completion --print zsh
 Print zsh completion script.
 .TP
 .B scl man --install
@@ -299,7 +389,9 @@ func zshCompletionScript() -> String {
           ;;
         completion)
           if (( CURRENT == 3 )); then
-            _values 'shell' 'zsh' 'bash' 'fish'
+            _values 'shell' '--print' 'zsh' 'bash' 'fish'
+          else
+            _values 'completion options' '--print'
           fi
           ;;
       esac
@@ -354,7 +446,7 @@ func bashCompletionScript() -> String {
           fi
           ;;
         completion)
-          COMPREPLY=( $(compgen -W "zsh bash fish" -- "$cur") )
+          COMPREPLY=( $(compgen -W "--print zsh bash fish" -- "$cur") )
           ;;
       esac
     }
@@ -376,7 +468,7 @@ func fishCompletionScript() -> String {
     complete -c scl -n '__fish_seen_subcommand_from game' -a 'list status stutue search config create launch stop delete'
     complete -c scl -n '__fish_seen_subcommand_from account' -a 'list create delete set-default show'
     complete -c scl -n '__fish_seen_subcommand_from resources' -a 'search install list remove'
-    complete -c scl -n '__fish_seen_subcommand_from completion' -a 'zsh bash fish'
+    complete -c scl -n '__fish_seen_subcommand_from completion' -a 'zsh bash fish' -l print
 
     complete -c scl -l help
     complete -c scl -l json
