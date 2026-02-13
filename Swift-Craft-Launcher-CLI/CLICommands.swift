@@ -802,7 +802,7 @@ func accountSetDefault(args: [String]) {
     cfg.defaultAccount = name
     saveConfig(cfg)
 
-    var profiles = loadUserProfilesFromAppDefaults()
+    let profiles = loadUserProfilesFromAppDefaults()
     if !profiles.isEmpty {
         var updated: [StoredUserProfile] = []
         for p in profiles {
@@ -881,50 +881,17 @@ func installResource(
         defer { sem.signal() }
         do {
             if type == "modpack" {
-                ensureMainAppImportResponseObserver()
-                renderer.update(progress: 0.16, title: "请求主程序下载整合包（不会自动唤起）")
-                let maxAttempts = 1
-                var importResult: (ok: Bool, message: String, gameName: String?) = (false, "导入失败", nil)
-
-                for attempt in 1...maxAttempts {
-                    let requestId = UUID().uuidString
-                    let responseFile = fm.temporaryDirectory
-                        .appendingPathComponent("swiftcraftlauncher_modpack_response", isDirectory: true)
-                        .appendingPathComponent("\(requestId).json", isDirectory: false).path
-                    requestMainAppImportModpackByProject(
-                        requestId: requestId,
-                        projectId: projectId,
-                        version: version,
-                        preferredName: customFileName,
-                        responseFile: responseFile
-                    )
-                    renderer.update(progress: 0.82, title: "等待主程序下载安装整合包")
-                    let timeout: TimeInterval = 1800.0
-                    importResult = waitMainAppImportResult(requestId: requestId, responseFile: responseFile, timeout: timeout)
-                    if importResult.ok {
-                        break
-                    }
-                    if attempt < maxAttempts && (
-                        importResult.message.contains("主程序尚未就绪")
-                            || importResult.message.contains("导入超时")
-                    ) {
-                        renderer.update(progress: 0.2, title: "主程序初始化中，重试导入请求")
-                        usleep(1_200_000)
-                        continue
-                    }
-                    break
-                }
-
-                if importResult.ok {
-                    if let gameName = importResult.gameName, !gameName.isEmpty {
-                        resultText = "安装成功: 已导入实例 \(gameName)"
-                        renderer.finish(success: true, message: "安装成功：\(gameName)")
-                    } else {
-                        resultText = "安装成功: \(importResult.message)"
-                        renderer.finish(success: true, message: "安装成功")
-                    }
+                renderer.update(progress: 0.12, title: "解析整合包信息")
+                let installResult = installModrinthModpack(
+                    projectId: projectId,
+                    version: version,
+                    preferredName: customFileName
+                )
+                if installResult.hasPrefix("安装成功") || installResult.hasPrefix("已导入") {
+                    resultText = installResult
+                    renderer.finish(success: true, message: "安装成功")
                 } else {
-                    resultText = "安装失败: \(importResult.message)"
+                    resultText = installResult
                     renderer.finish(success: false, message: "安装失败")
                 }
                 return
@@ -1068,7 +1035,7 @@ func runResourceSearchTUI(
         let pageInfo = pagedBounds(total: hits.count, selectedIndex: selectedIndex, pageSize: pageSize)
         clearScreen()
         print(stylize("资源搜索结果（交互模式）", ANSI.bold + ANSI.cyan))
-        let targetText = type == "modpack" ? "主程序下载安装整合包（不会自动唤起）" : "目标实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
+        let targetText = type == "modpack" ? "本地安装整合包" : "目标实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
         print(stylize("关键词=\(query) 类型=\(type) \(targetText)", ANSI.gray))
         print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
         print("")
@@ -1124,7 +1091,7 @@ func runResourceSearchTUI(
         clearScreen()
         print(stylize("安装对话框", ANSI.bold + ANSI.cyan))
         print(stylize("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出", ANSI.yellow))
-        let targetText = type == "modpack" ? "主程序下载安装整合包（不会自动唤起）" : "实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
+        let targetText = type == "modpack" ? "本地安装整合包" : "实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
         print(stylize("项目=\(hit.title)  \(targetText)  类型=\(type)", ANSI.gray))
         if type != "modpack", !selectedInstance.isEmpty {
             let record = queryGameRecord(instance: selectedInstance)
@@ -1350,7 +1317,7 @@ func runResourceSearchTUI(
             let versions = filteredVersions(for: current.project_id)
             guard !versions.isEmpty else { break }
             let selectedVersion = versions[versionIndex]
-            var installInstance = selectedInstance
+            let installInstance = selectedInstance
             clearScreen()
             info("正在安装 \(current.title) @ \(selectedVersion.version_number) ...")
             var customFileName: String? = nil
@@ -1370,7 +1337,7 @@ func runResourceSearchTUI(
                 customFileName: customFileName,
                 showProgress: true
             )
-            if result.hasPrefix("安装成功") || result.hasPrefix("已交给主程序导入") {
+            if result.hasPrefix("安装成功") || result.hasPrefix("已导入") {
                 success(result)
             } else {
                 fail(result)
@@ -1518,7 +1485,7 @@ func resourcesInstall(args: [String]) {
         customFileName: customFileName,
         showProgress: true
     )
-    if resultText.hasPrefix("安装成功") || resultText.hasPrefix("已交给主程序导入") {
+    if resultText.hasPrefix("安装成功") || resultText.hasPrefix("已导入") {
         success(resultText)
     } else {
         fail(resultText)

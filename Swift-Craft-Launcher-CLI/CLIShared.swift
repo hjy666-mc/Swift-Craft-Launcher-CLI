@@ -138,6 +138,8 @@ struct ModrinthVersion: Codable {
 struct ModrinthFile: Codable {
     let url: String
     let filename: String
+    let primary: Bool?
+    let file_type: String?
 }
 
 struct ModrinthProjectDetail: Codable {
@@ -1069,7 +1071,7 @@ func parseMemoryToMB(_ value: String) -> Int {
 
 /// 将可能是目录的 Java 路径规范化为具体可执行文件
 func normalizedJavaPath(_ raw: String) -> String {
-    var path = raw
+    let path = raw
     var isDir: ObjCBool = false
     if fm.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
         let candidate = (path as NSString).appendingPathComponent("java")
@@ -2037,6 +2039,7 @@ let appStorageSpecs: [AppStorageSettingSpec] = [
     .init(key: "minecraftVersionManifestURL", type: .string),
     .init(key: "modrinthAPIBaseURL", type: .string),
     .init(key: "curseForgeAPIBaseURL", type: .string),
+    .init(key: "curseForgeAPIKey", type: .string),
     .init(key: "forgeMavenMirrorURL", type: .string),
     .init(key: "launcherWorkingDirectory", type: .string),
     .init(key: "interfaceLayoutStyle", type: .string),
