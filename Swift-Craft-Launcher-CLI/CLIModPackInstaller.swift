@@ -238,6 +238,7 @@ func installModrinthModpack(
                 }
                 let depsCount = selected.dependencies?.count ?? -1
                 let gvCount = selected.game_versions?.count ?? -1
+                fputs("[modpack-debug] fallback=nil depsCount=\(depsCount) gvCount=\(gvCount) err=\(selectedResult.error ?? "nil")\n", stderr)
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）",
                     tmpDir: workingDir,
@@ -581,6 +582,7 @@ private func installFromVersionDependenciesOnly(
     var deps = buildDependencies(from: selectedVersion.dependencies)
     var fetchErr: String? = nil
     var sourceVersion = selectedVersion
+    fputs("[modpack-debug] deps initial count=\(deps.count) versionId=\(selectedVersion.id)\n", stderr)
     if deps.isEmpty {
         let res = await fetchModrinthVersionWithStatus(id: selectedVersion.id)
         fetchErr = res.error
@@ -588,6 +590,7 @@ private func installFromVersionDependenciesOnly(
             sourceVersion = refreshed
             deps = buildDependencies(from: refreshed.dependencies)
         }
+        fputs("[modpack-debug] deps after refresh count=\(deps.count) fetchErr=\(fetchErr ?? "nil")\n", stderr)
     }
     if deps.isEmpty {
         let reason = "版本依赖为空（无法安装）。依赖数量=0，fetchError=\(fetchErr ?? "nil")"
