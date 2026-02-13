@@ -225,19 +225,22 @@ func installModrinthModpack(
                 return "\(file.filename) | primary=\(p) | type=\(t) | url=\(file.url)"
             }.joined(separator: "\n")
             if indexURL == nil && manifestURL == nil {
-                if let fallbackResult = try await installFromVersionDependenciesOnly(
+                let fallbackResult = try await installFromVersionDependenciesOnly(
                     selectedVersion: selected,
                     projectId: projectId,
                     preferredName: preferredName,
                     tmpDir: workingDir
-                ) {
+                )
+                if let fallbackResult {
                     result = fallbackResult
                     return
                 }
+                let depsCount = selected.dependencies?.count ?? -1
+                let gvCount = selected.game_versions?.count ?? -1
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）",
                     tmpDir: workingDir,
-                    extra: "版本文件列表:\n\(versionFileList)\n\n版本详情拉取错误: \(selectedResult.error ?? "nil")"
+                    extra: "版本文件列表:\n\(versionFileList)\n\n版本详情拉取错误: \(selectedResult.error ?? "nil")\nfallback返回nil: true\ndepsCount=\(depsCount) gameVersionsCount=\(gvCount)"
                 )
                 return
             }
