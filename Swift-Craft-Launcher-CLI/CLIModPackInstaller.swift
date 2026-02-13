@@ -146,6 +146,7 @@ func installModrinthModpack(
     version: String?,
     preferredName: String?
 ) -> String {
+    fputs("[modpack-debug] installModrinthModpack marker=CLI-64333ec\n", stderr)
     let sem = DispatchSemaphore(value: 0)
     var result = "安装失败"
     Task {
@@ -240,7 +241,7 @@ func installModrinthModpack(
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）",
                     tmpDir: workingDir,
-                    extra: "版本文件列表:\n\(versionFileList)\n\n版本详情拉取错误: \(selectedResult.error ?? "nil")\nfallback返回nil: true\ndepsCount=\(depsCount) gameVersionsCount=\(gvCount)"
+                    extra: "版本文件列表:\n\(versionFileList)\n\n版本详情拉取错误: \(selectedResult.error ?? "nil")\nfallback返回nil: true\ndepsCount=\(depsCount) gameVersionsCount=\(gvCount)\nmarker=CLI-64333ec"
                 )
                 return
             }
