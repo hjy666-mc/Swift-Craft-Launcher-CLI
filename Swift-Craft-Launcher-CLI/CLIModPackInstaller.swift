@@ -159,15 +159,18 @@ func installModrinthModpack(
                 return
             }
             let mrpackCandidates = selected.files.filter { $0.filename.lowercased().hasSuffix(".mrpack") }
-            let mrpackPreferred = mrpackCandidates.first(where: { $0.primary == true }) ?? mrpackCandidates.first
-            let modpackTypeFile = selected.files.first(where: { ($0.file_type ?? "").lowercased() == "modpack" })
-            let primaryFile = selected.files.first(where: { $0.primary == true })
-            let fallbackFile = selected.files.first
-            let orderedFiles = [mrpackPreferred, modpackTypeFile, primaryFile, fallbackFile]
-                .compactMap { $0 }
-                .reduce(into: [ModrinthFile]()) { acc, item in
-                    if !acc.contains(where: { $0.url == item.url }) { acc.append(item) }
-                }
+            let mrpackPreferred = mrpackCandidates.first(where: { $0.primary == true })
+            let sortedMrpacks = ([mrpackPreferred].compactMap { $0 } + mrpackCandidates).reduce(into: [ModrinthFile]()) { acc, item in
+                if !acc.contains(where: { $0.url == item.url }) { acc.append(item) }
+            }
+            let others = selected.files.filter { file in
+                !sortedMrpacks.contains(where: { $0.url == file.url })
+            }
+            let modpackTypeFirst = others.filter { ($0.file_type ?? "").lowercased() == "modpack" }
+            let remaining = others.filter { ($0.file_type ?? "").lowercased() != "modpack" }
+            let orderedFiles = (sortedMrpacks + modpackTypeFirst + remaining).reduce(into: [ModrinthFile]()) { acc, item in
+                if !acc.contains(where: { $0.url == item.url }) { acc.append(item) }
+            }
             guard let _ = orderedFiles.first else {
                 result = "未找到可下载的整合包文件"
                 return
