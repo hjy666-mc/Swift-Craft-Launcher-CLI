@@ -1003,6 +1003,14 @@ func mergeConfigWithAppDefaults(_ config: CLIConfig) -> CLIConfig {
         }
     }
     for defaults in appDefaultsStores() {
+        if merged.javaPath.isEmpty,
+           let java = defaults.string(forKey: "defaultJavaPath"),
+           !java.isEmpty {
+            merged.javaPath = java
+            break
+        }
+    }
+    for defaults in appDefaultsStores() {
         let xmx = defaults.integer(forKey: "globalXmx")
         if xmx > 0 {
             merged.memory = "\(xmx)M"
@@ -1015,6 +1023,9 @@ func mergeConfigWithAppDefaults(_ config: CLIConfig) -> CLIConfig {
 func syncConfigToAppDefaults(_ config: CLIConfig) {
     for defaults in appDefaultsStores() {
         defaults.set(config.gameDir, forKey: "launcherWorkingDirectory")
+        if !config.javaPath.isEmpty {
+            defaults.set(config.javaPath, forKey: "defaultJavaPath")
+        }
 
         let xmx = parseMemoryToMB(config.memory)
         defaults.set(xmx, forKey: "globalXmx")
