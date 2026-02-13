@@ -228,6 +228,58 @@ func gameLaunch(args: [String]) {
         return
     }
 
+    // 修正主程序占位符（classpath、目录等），避免未替换导致启动失败
+    let profileDir = profileRoot().appendingPathComponent(instance, isDirectory: true)
+    let metaDir = URL(fileURLWithPath: loadConfig().gameDir, isDirectory: true)
+        .appendingPathComponent("meta", isDirectory: true)
+    let assetsDir = metaDir.appendingPathComponent("assets", isDirectory: true)
+    let nativesDir = metaDir.appendingPathComponent("natives/\(instance)", isDirectory: true)
+    try? fm.createDirectory(at: nativesDir, withIntermediateDirectories: true)
+
+    // 如果有多个 -cp，以最后一个为准；若最后一个是占位符则用第一个真实 cp 覆盖
+    var cpValues: [String] = []
+    for idx in command.indices where command[idx] == "-cp" {
+        let valIdx = command.index(after: idx)
+        if valIdx < command.count {
+            cpValues.append(command[valIdx])
+        }
+    }
+    if let lastCPIndex = command.lastIndex(of: "-cp"),
+       let lastValIndex = command.index(lastCPIndex, offsetBy: 1, limitedBy: command.endIndex),
+       lastValIndex < command.count,
+       command[lastValIndex].contains("${classpath}"),
+       let firstRealCP = cpValues.first(where: { !$0.contains("${classpath}") }) {
+        command[lastValIndex] = firstRealCP
+    }
+
+    let replacements: [String: String] = [
+        "${game_directory}": profileDir.path,
+        "${assets_root}": assetsDir.path,
+        "${assets_index_name}": (record["assetIndex"] as? String) ?? "",
+        "${version_name}": (record["gameVersion"] as? String) ?? instance,
+        "${version_type}": "release",
+        "${launcher_name}": "SwiftCraftLauncher-CLI",
+        "${launcher_version}": "cli",
+        "${clientid}": (record["clientId"] as? String) ?? UUID().uuidString,
+        "${natives_directory}": nativesDir.path,
+        "${quickPlayPath}": "",
+        "${quickPlaySingleplayer}": "",
+        "${quickPlayMultiplayer}": "",
+        "${quickPlayRealms}": "",
+        "${resolution_width}": "854",
+        "${resolution_height}": "480",
+    ]
+
+    command = command.map { token in
+        var result = token
+        for (key, value) in replacements {
+            if result.contains(key) {
+                result = result.replacingOccurrences(of: key, with: value)
+            }
+        }
+        return result
+    }
+
     let config = loadConfig()
     let javaFromRecord = (record["javaPath"] as? String) ?? ""
     let java = valueOf("--java", in: args) ?? (javaFromRecord.isEmpty ? config.javaPath : javaFromRecord)
