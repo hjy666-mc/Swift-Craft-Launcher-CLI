@@ -280,6 +280,29 @@ func gameLaunch(args: [String]) {
         return result
     }
 
+    // 移除空 quickPlay 选项，避免“Only one quick play option can be specified”报错
+    func removeEmptyQuickPlay(_ cmd: [String]) -> [String] {
+        var filtered: [String] = []
+        var i = 0
+        while i < cmd.count {
+            let arg = cmd[i]
+            let isQuick = ["--quickPlayPath", "--quickPlaySingleplayer", "--quickPlayMultiplayer", "--quickPlayRealms"].contains(arg)
+            if isQuick && i + 1 < cmd.count {
+                let val = cmd[i + 1]
+                if !val.isEmpty {
+                    filtered.append(arg)
+                    filtered.append(val)
+                }
+                i += 2
+                continue
+            }
+            filtered.append(arg)
+            i += 1
+        }
+        return filtered
+    }
+    command = removeEmptyQuickPlay(command)
+
     let config = loadConfig()
     let javaFromRecord = (record["javaPath"] as? String) ?? ""
     let java = valueOf("--java", in: args) ?? (javaFromRecord.isEmpty ? config.javaPath : javaFromRecord)
