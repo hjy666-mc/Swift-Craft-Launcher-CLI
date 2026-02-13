@@ -94,18 +94,15 @@ func installModrinthModpack(
             let indexURL = findFileURL(named: "modrinth.index.json", under: tmpDir)
             let manifestURL = findFileURL(named: "manifest.json", under: tmpDir)
             if indexURL == nil && manifestURL == nil {
-                let listing = listFilesForDebug(under: tmpDir, maxItems: 200)
-                let diagPath = writeDebugListing(listing)
-                if let diagPath {
-                    result = "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式）。解压文件清单已写入: \(diagPath)"
-                } else {
-                    result = "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式）"
-                }
+                result = writeFailureDiagnostics(
+                    reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式）",
+                    tmpDir: tmpDir
+                )
                 return
             }
             if let indexURL,
                let indexData = try? Data(contentsOf: indexURL),
-                let index = try? JSONDecoder().decode(ModrinthIndex.self, from: indexData) {
+               let index = try? JSONDecoder().decode(ModrinthIndex.self, from: indexData) {
                 let deps = index.dependencies ?? [:]
                 let gameVersion = deps["minecraft"] ?? ""
                 let modLoader: String = {
@@ -186,7 +183,10 @@ func installModrinthModpack(
                 return
             }
 
-            result = "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式）"
+            result = writeFailureDiagnostics(
+                reason: "索引文件解析失败（可能格式不支持）",
+                tmpDir: tmpDir
+            )
         } catch {
             result = "安装失败: \(error.localizedDescription)"
         }
@@ -249,6 +249,15 @@ private func writeDebugListing(_ listing: String) -> String? {
     } catch {
         return nil
     }
+}
+
+private func writeFailureDiagnostics(reason: String, tmpDir: URL) -> String {
+    let listing = listFilesForDebug(under: tmpDir, maxItems: 300)
+    let diagPath = writeDebugListing(listing)
+    if let diagPath {
+        return "\(reason)。解压目录: \(tmpDir.path)\n清单已写入: \(diagPath)"
+    }
+    return "\(reason)。解压目录: \(tmpDir.path)"
 }
 
 private func parseCurseForgeLoader(_ loaders: [CurseForgeManifest.ModLoader]) -> (type: String, version: String) {
