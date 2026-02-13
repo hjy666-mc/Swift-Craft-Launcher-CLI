@@ -304,6 +304,15 @@ private func installOverridesOnly(
     }
     let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
     copyOverrides(from: overridesDir, to: profileDir)
+    let modsOk = await installDependenciesFromVersion(
+        selectedVersion: selectedVersion,
+        gameVersion: gameVersion,
+        modLoader: modLoader,
+        profileDir: profileDir
+    )
+    if !modsOk {
+        return "安装完成: 已导入实例 \(instanceName)（仅包含 overrides，依赖下载失败）"
+    }
     return "安装成功: 已导入实例 \(instanceName)（仅包含 overrides）"
 }
 
@@ -321,6 +330,93 @@ private func findOverridesDir(under root: URL) -> URL? {
         }
     }
     return nil
+}
+
+private func installDependenciesFromVersion(
+    selectedVersion: ModrinthVersion,
+    gameVersion: String,
+    modLoader: String,
+    profileDir: URL
+) async -> Bool {
+    let deps = selectedVersion.dependencies ?? []
+    let required = deps.filter { $0.dependency_type == "required" }
+    guard !required.isEmpty else { return true }
+    let modsDir = profileDir.appendingPathComponent("mods", isDirectory: true)
+    try? FileManager.default.createDirectory(at: modsDir, withIntermediateDirectories: true)
+    for dep in required {
+        if let projectId = dep.project_id, projectId.hasPrefix("cf-") {
+            let modIdStr = String(projectId.dropFirst(3))
+            if let modId = Int(modIdStr), let versionId = dep.version_id, let fileId = Int(versionId) {
+                do {
+                    let detail = try await fetchCurseForgeFileDetail(projectId: modId, fileId: fileId)
+                    let fileName = detail.fileName
+                    let downloadUrl = detail.downloadUrl ?? curseForgeFallbackDownloadUrl(fileId: detail.id, fileName: fileName)
+                    if let url = URL(string: downloadUrl) {
+                        let dest = modsDir.appendingPathComponent(fileName)
+                        let (fileTmp, _) = try await URLSession.shared.download(from: url)
+                        try? FileManager.default.removeItem(at: dest)
+                        try FileManager.default.moveItem(at: fileTmp, to: dest)
+                        continue
+                    }
+                } catch {
+                    continue
+                }
+            }
+            continue
+        }
+        if let versionId = dep.version_id {
+            if let v = await fetchModrinthVersion(id: versionId),
+               await downloadPrimaryModFile(from: v, to: modsDir) {
+                continue
+            } else {
+                return false
+            }
+        } else if let projectId = dep.project_id {
+            let versions = fetchProjectVersions(projectId: projectId)
+            let compatible = versions.first { v in
+                (v.game_versions ?? []).contains(gameVersion) &&
+                (v.loaders ?? []).contains(modLoader)
+            }
+            if let v = compatible, await downloadPrimaryModFile(from: v, to: modsDir) {
+                continue
+            } else {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+private func fetchModrinthVersion(id: String) async -> ModrinthVersion? {
+    let sem = DispatchSemaphore(value: 0)
+    var version: ModrinthVersion?
+    Task {
+        defer { sem.signal() }
+        do {
+            let url = URL(string: "https://api.modrinth.com/v2/version/\(id)")!
+            let (data, _) = try await URLSession.shared.data(from: url)
+            version = try JSONDecoder().decode(ModrinthVersion.self, from: data)
+        } catch {
+            version = nil
+        }
+    }
+    sem.wait()
+    return version
+}
+
+private func downloadPrimaryModFile(from version: ModrinthVersion, to modsDir: URL) async -> Bool {
+    let file = version.files.first(where: { $0.primary == true })
+        ?? version.files.first
+    guard let file, let url = URL(string: file.url) else { return false }
+    do {
+        let dest = modsDir.appendingPathComponent(file.filename)
+        let (tmp, _) = try await URLSession.shared.download(from: url)
+        try? FileManager.default.removeItem(at: dest)
+        try FileManager.default.moveItem(at: tmp, to: dest)
+        return true
+    } catch {
+        return false
+    }
 }
 
 private func parseCurseForgeLoader(_ loaders: [CurseForgeManifest.ModLoader]) -> (type: String, version: String) {

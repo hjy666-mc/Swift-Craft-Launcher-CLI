@@ -133,6 +133,7 @@ struct ModrinthVersion: Codable {
     let loaders: [String]?
     let date_published: String?
     let files: [ModrinthFile]
+    let dependencies: [ModrinthDependency]?
 }
 
 struct ModrinthFile: Codable {
@@ -140,6 +141,12 @@ struct ModrinthFile: Codable {
     let filename: String
     let primary: Bool?
     let file_type: String?
+}
+
+struct ModrinthDependency: Codable {
+    let version_id: String?
+    let project_id: String?
+    let dependency_type: String
 }
 
 struct ModrinthProjectDetail: Codable {
