@@ -417,6 +417,27 @@ private func executeProcessors(
     gameVersion: String,
     instance: String
 ) -> String? {
+    func downloadCoordIfMissing(_ coord: String) -> String? {
+        let rel = mavenPath(coord)
+        let dest = metaDir.appendingPathComponent(rel)
+        if FileManager.default.fileExists(atPath: dest.path) { return nil }
+        let bases = [
+            "https://maven.neoforged.net/releases/",
+            "https://maven.minecraftforge.net/",
+            "https://maven.fabricmc.net/",
+            "https://maven.quiltmc.org/repository/release/",
+            "https://repo1.maven.org/maven2/",
+        ]
+        for base in bases {
+            if let url = URL(string: base + rel) {
+                if downloadToFile(url: url, dest: dest, expectedSha1: nil) == nil {
+                    return nil
+                }
+            }
+        }
+        return "无法下载处理器依赖: \(coord)"
+    }
+
     let java = normalizedJavaPath(loadConfig().javaPath)
     guard FileManager.default.isExecutableFile(atPath: java) else {
         return "Java 路径为空或不可执行"
@@ -431,6 +452,9 @@ private func executeProcessors(
 
         var classpath: [String] = []
         if let cp = proc.classpath {
+            for coord in cp {
+                if let err = downloadCoordIfMissing(coord) { return err }
+            }
             classpath = cp.map { metaDir.appendingPathComponent(mavenPath($0)).path }
         }
 
@@ -445,6 +469,8 @@ private func executeProcessors(
                 args.append(applyTemplateVars(arg, gameDir: gameDir, metaDir: metaDir, gameVersion: gameVersion, instance: instance))
             }
         }
+
+        if let err = downloadCoordIfMissing(jarName) { return err }
 
         let procProcess = Process()
         procProcess.executableURL = URL(fileURLWithPath: java)
