@@ -154,10 +154,11 @@ func installModrinthModpack(
             let versionsURL = URL(string: "https://api.modrinth.com/v2/project/\(projectId)/version")!
             let (data, _) = try await URLSession.shared.data(from: versionsURL)
             let versions = try JSONDecoder().decode([ModrinthVersion].self, from: data)
-            guard let selected = versions.first(where: { version == nil || $0.id == version || $0.version_number == version }) else {
+            guard let selectedBrief = versions.first(where: { version == nil || $0.id == version || $0.version_number == version }) else {
                 result = "未找到匹配版本"
                 return
             }
+            let selected = await fetchModrinthVersion(id: selectedBrief.id) ?? selectedBrief
             let mrpackCandidates = selected.files.filter { $0.filename.lowercased().hasSuffix(".mrpack") }
             let mrpackPreferred = mrpackCandidates.first(where: { $0.primary == true })
             let sortedMrpacks = ([mrpackPreferred].compactMap { $0 } + mrpackCandidates).reduce(into: [ModrinthFile]()) { acc, item in
