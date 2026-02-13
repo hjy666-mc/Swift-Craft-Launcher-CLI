@@ -211,8 +211,8 @@ func installModrinthModpack(
                     continue
                 }
                 if firstTmpDir == nil { firstTmpDir = dir }
-                let maybeIndex = findFileURL(named: "modrinth.index.json", under: dir)
-                let maybeManifest = findFileURL(named: "manifest.json", under: dir)
+                let maybeIndex = findRootFileURL(named: "modrinth.index.json", under: dir)
+                let maybeManifest = findRootFileURL(named: "manifest.json", under: dir)
                 if maybeIndex != nil || maybeManifest != nil {
                     tmpDir = dir
                     indexURL = maybeIndex
@@ -221,6 +221,7 @@ func installModrinthModpack(
                 }
             }
             let workingDir = tmpDir ?? firstTmpDir ?? fm.temporaryDirectory
+            writeDebugLog("[modpack-debug] detected indexURL=\(indexURL?.path ?? "nil") manifestURL=\(manifestURL?.path ?? "nil") workingDir=\(workingDir.path)")
             let versionFileList = selected.files.map { file in
                 let p = file.primary == true ? "true" : "false"
                 let t = file.file_type ?? ""
@@ -346,10 +347,23 @@ func installModrinthModpack(
                 return
             }
 
+            let indexInfo: String = {
+                if let indexURL, let data = try? Data(contentsOf: indexURL) {
+                    return "indexURL=\(indexURL.path) size=\(data.count)"
+                }
+                return "indexURL=nil"
+            }()
+            let manifestInfo: String = {
+                if let manifestURL, let data = try? Data(contentsOf: manifestURL) {
+                    return "manifestURL=\(manifestURL.path) size=\(data.count)"
+                }
+                return "manifestURL=nil"
+            }()
+            writeDebugLog("[modpack-debug] index decode failed. \(indexInfo) \(manifestInfo)")
             result = writeFailureDiagnostics(
                 reason: "索引文件解析失败（可能格式不支持，未安装）",
                 tmpDir: workingDir,
-                extra: "版本文件列表:\n\(versionFileList)"
+                extra: "版本文件列表:\n\(versionFileList)\n\(indexInfo)\n\(manifestInfo)"
             )
         } catch {
             result = "安装失败: \(error.localizedDescription)"
@@ -386,6 +400,13 @@ private func findFileURL(named fileName: String, under root: URL) -> URL? {
             return item
         }
     }
+    return nil
+}
+
+private func findRootFileURL(named fileName: String, under root: URL) -> URL? {
+    let fm = FileManager.default
+    let direct = root.appendingPathComponent(fileName)
+    if fm.fileExists(atPath: direct.path) { return direct }
     return nil
 }
 
