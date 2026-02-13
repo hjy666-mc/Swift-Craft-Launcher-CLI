@@ -573,7 +573,10 @@ private func installFromVersionDependenciesOnly(
     preferredName: String?,
     tmpDir: URL
 ) async throws -> String? {
-    let deps = buildDependencies(from: selectedVersion.dependencies)
+    var deps = buildDependencies(from: selectedVersion.dependencies)
+    if deps.isEmpty, let refreshed = await fetchModrinthVersion(id: selectedVersion.id) {
+        deps = buildDependencies(from: refreshed.dependencies)
+    }
     if deps.isEmpty { return nil }
     let gameVersion = selectedVersion.game_versions?.first ?? ""
     let loaders = selectedVersion.loaders ?? []
