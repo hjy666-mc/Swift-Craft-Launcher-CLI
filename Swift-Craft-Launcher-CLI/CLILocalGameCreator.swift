@@ -255,6 +255,19 @@ private func mavenPath(_ name: String) -> String {
     return "\(groupPath)/\(artifact)/\(version)/\(artifact)-\(version).jar"
 }
 
+private func mavenPathWithAtSymbol(_ coordinate: String) -> String {
+    // e.g. net.neoforged:neoform:1.0.0@zip -> net/neoforged/neoform/1.0.0/neoform-1.0.0.zip
+    let atParts = coordinate.split(separator: "@", maxSplits: 1).map(String.init)
+    let base = atParts[0]
+    let ext = atParts.count > 1 ? atParts[1] : "jar"
+    let parts = base.split(separator: ":")
+    guard parts.count >= 3 else { return coordinate }
+    let groupPath = parts[0].replacingOccurrences(of: ".", with: "/")
+    let artifact = parts[1]
+    let version = parts[2]
+    return "\(groupPath)/\(artifact)/\(version)/\(artifact)-\(version).\(ext)"
+}
+
 private func parseLoaderProfile(_ data: Data) -> LoaderProfileDetail? {
     guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
     let mainClass: String? = {
@@ -431,7 +444,7 @@ private func executeProcessors(
     }
 
     func downloadCoordIfMissing(_ coord: String) -> String? {
-        let rel = mavenPath(coord)
+        let rel = coord.contains("@") ? mavenPathWithAtSymbol(coord) : mavenPath(coord)
         let dest = metaDir.appendingPathComponent(rel)
         if FileManager.default.fileExists(atPath: dest.path) { return nil }
         let bases = [
@@ -477,8 +490,8 @@ private func executeProcessors(
                 let placeholder = "{\(key)}"
                 if out.contains(placeholder) {
                     let replaced = value.contains(":") && !value.hasPrefix("/")
-                    ? metaDir.appendingPathComponent(mavenPath(value)).path
-                    : value
+                        ? metaDir.appendingPathComponent(value.contains("@") ? mavenPathWithAtSymbol(value) : mavenPath(value)).path
+                        : value
                     out = out.replacingOccurrences(of: placeholder, with: replaced)
                 }
             }
