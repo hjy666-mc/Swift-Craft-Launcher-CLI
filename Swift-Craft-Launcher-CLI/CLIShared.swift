@@ -1006,7 +1006,7 @@ func mergeConfigWithAppDefaults(_ config: CLIConfig) -> CLIConfig {
         if merged.javaPath.isEmpty,
            let java = defaults.string(forKey: "defaultJavaPath"),
            !java.isEmpty {
-            merged.javaPath = java
+            merged.javaPath = normalizedJavaPath(java)
             break
         }
     }
@@ -1024,7 +1024,7 @@ func syncConfigToAppDefaults(_ config: CLIConfig) {
     for defaults in appDefaultsStores() {
         defaults.set(config.gameDir, forKey: "launcherWorkingDirectory")
         if !config.javaPath.isEmpty {
-            defaults.set(config.javaPath, forKey: "defaultJavaPath")
+            defaults.set(normalizedJavaPath(config.javaPath), forKey: "defaultJavaPath")
         }
 
         let xmx = parseMemoryToMB(config.memory)
@@ -1065,6 +1065,23 @@ func parseMemoryToMB(_ value: String) -> Int {
     if raw.hasSuffix("M"), let n = Int(raw.dropLast()) { return n }
     if let n = Int(raw) { return n }
     return 4096
+}
+
+/// 将可能是目录的 Java 路径规范化为具体可执行文件
+func normalizedJavaPath(_ raw: String) -> String {
+    var path = raw
+    var isDir: ObjCBool = false
+    if fm.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
+        let candidate = (path as NSString).appendingPathComponent("java")
+        if fm.isExecutableFile(atPath: candidate) { return candidate }
+        let binJava = (path as NSString).appendingPathComponent("bin/java")
+        if fm.isExecutableFile(atPath: binJava) { return binJava }
+    }
+    if !fm.isExecutableFile(atPath: path) {
+        let candidate = (path as NSString).appendingPathComponent("bin/java")
+        if fm.isExecutableFile(atPath: candidate) { return candidate }
+    }
+    return path
 }
 
 func shellEscapeSingleQuotes(_ text: String) -> String {
