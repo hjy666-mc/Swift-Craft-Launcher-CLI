@@ -13,6 +13,102 @@ struct ModrinthIndex: Decodable {
     let overrides: String?
 }
 
+struct ModrinthIndexFileHashes: Codable {
+    let sha1: String?
+    let sha512: String?
+    let other: [String: String]?
+
+    init(from dict: [String: String]) {
+        self.sha1 = dict["sha1"]
+        self.sha512 = dict["sha512"]
+        var otherDict: [String: String] = [:]
+        for (key, value) in dict where key != "sha1" && key != "sha512" {
+            otherDict[key] = value
+        }
+        self.other = otherDict.isEmpty ? nil : otherDict
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let dict = try container.decode([String: String].self)
+        self.init(from: dict)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        var dict: [String: String] = [:]
+        if let sha1 = sha1 { dict["sha1"] = sha1 }
+        if let sha512 = sha512 { dict["sha512"] = sha512 }
+        if let other = other { dict.merge(other) { _, new in new } }
+        try container.encode(dict)
+    }
+
+    subscript(key: String) -> String? {
+        switch key {
+        case "sha1": return sha1
+        case "sha512": return sha512
+        default: return other?[key]
+        }
+    }
+}
+
+struct ModrinthIndexFileEnv: Codable {
+    let client: String?
+    let server: String?
+}
+
+struct ModrinthIndexFile: Codable {
+    let path: String
+    let hashes: ModrinthIndexFileHashes
+    let downloads: [String]
+    let fileSize: Int
+    let env: ModrinthIndexFileEnv?
+    let source: FileSource?
+    let curseForgeProjectId: Int?
+    let curseForgeFileId: Int?
+
+    init(
+        path: String,
+        hashes: [String: String],
+        downloads: [String],
+        fileSize: Int,
+        env: ModrinthIndexFileEnv? = nil,
+        source: FileSource? = nil,
+        curseForgeProjectId: Int? = nil,
+        curseForgeFileId: Int? = nil
+    ) {
+        self.path = path
+        self.hashes = ModrinthIndexFileHashes(from: hashes)
+        self.downloads = downloads
+        self.fileSize = fileSize
+        self.env = env
+        self.source = source
+        self.curseForgeProjectId = curseForgeProjectId
+        self.curseForgeFileId = curseForgeFileId
+    }
+}
+
+enum FileSource: String, Codable {
+    case modrinth
+    case curseforge
+}
+
+struct ModrinthIndexProjectDependency: Codable {
+    let projectId: String?
+    let versionId: String?
+    let dependencyType: String
+}
+
+struct ModrinthIndexInfo {
+    let gameVersion: String
+    let loaderType: String
+    let loaderVersion: String
+    let modPackName: String
+    let modPackVersion: String
+    let files: [ModrinthIndexFile]
+    let dependencies: [ModrinthIndexProjectDependency]
+}
+
 struct CurseForgeManifest: Decodable {
     struct MinecraftInfo: Decodable {
         let version: String
@@ -141,13 +237,29 @@ func installModrinthModpack(
                 let overridesDir = tmpDir.appendingPathComponent(index.overrides ?? "overrides", isDirectory: true)
                 copyOverrides(from: overridesDir, to: profileDir)
 
-                for file in index.files {
-                    guard let urlStr = file.downloads.first, let url = URL(string: urlStr) else { continue }
-                    let dest = profileDir.appendingPathComponent(file.path)
-                    try? fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
-                    let (fileTmp, _) = try await URLSession.shared.download(from: url)
-                    try? fm.removeItem(at: dest)
-                    try fm.moveItem(at: fileTmp, to: dest)
+                let indexInfo = ModrinthIndexInfo(
+                    gameVersion: gameVersion,
+                    loaderType: modLoader,
+                    loaderVersion: "",
+                    modPackName: index.name ?? instanceName,
+                    modPackVersion: selected.version_number,
+                    files: index.files.map { file in
+                        ModrinthIndexFile(
+                            path: file.path,
+                            hashes: file.hashes ?? [:],
+                            downloads: file.downloads,
+                            fileSize: 0,
+                            env: nil,
+                            source: .modrinth
+                        )
+                    },
+                    dependencies: buildDependencies(from: index.dependencies)
+                )
+                let filesOk = await installModPackFiles(indexInfo.files, profileDir: profileDir)
+                let depsOk = await installModPackDependencies(indexInfo.dependencies, gameVersion: gameVersion, modLoader: modLoader, profileDir: profileDir)
+                if !filesOk || !depsOk {
+                    result = "安装完成: 已导入实例 \(instanceName)（资源下载失败）"
+                    return
                 }
 
                 result = "安装成功: 已导入实例 \(instanceName)"
@@ -174,18 +286,17 @@ func installModrinthModpack(
                 let overridesDir = overridesBase.appendingPathComponent(manifest.overrides ?? "overrides", isDirectory: true)
                 copyOverrides(from: overridesDir, to: profileDir)
 
-                let modsDir = profileDir.appendingPathComponent("mods", isDirectory: true)
-                try? fm.createDirectory(at: modsDir, withIntermediateDirectories: true)
-
-                for file in manifest.files {
-                    let detail = try await fetchCurseForgeFileDetail(projectId: file.projectID, fileId: file.fileID)
-                    let fileName = detail.fileName
-                    let downloadUrl = detail.downloadUrl ?? curseForgeFallbackDownloadUrl(fileId: detail.id, fileName: fileName)
-                    guard let url = URL(string: downloadUrl) else { continue }
-                    let dest = modsDir.appendingPathComponent(fileName)
-                    let (fileTmp, _) = try await URLSession.shared.download(from: url)
-                    try? fm.removeItem(at: dest)
-                    try fm.moveItem(at: fileTmp, to: dest)
+                let deps = manifest.files.map {
+                    ModrinthIndexProjectDependency(
+                        projectId: "cf-\($0.projectID)",
+                        versionId: String($0.fileID),
+                        dependencyType: ($0.required ?? true) ? "required" : "optional"
+                    )
+                }
+                let depsOk = await installModPackDependencies(deps, gameVersion: gameVersion, modLoader: loaderInfo.type, profileDir: profileDir)
+                if !depsOk {
+                    result = "安装完成: 已导入实例 \(instanceName)（资源下载失败）"
+                    return
                 }
 
                 result = "安装成功: 已导入实例 \(instanceName)"
@@ -304,13 +415,9 @@ private func installOverridesOnly(
     }
     let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
     copyOverrides(from: overridesDir, to: profileDir)
-    let modsOk = await installDependenciesFromVersion(
-        selectedVersion: selectedVersion,
-        gameVersion: gameVersion,
-        modLoader: modLoader,
-        profileDir: profileDir
-    )
-    if !modsOk {
+    let deps = buildDependencies(from: selectedVersion.dependencies)
+    let depsOk = await installModPackDependencies(deps, gameVersion: gameVersion, modLoader: modLoader, profileDir: profileDir)
+    if !depsOk {
         return "安装完成: 已导入实例 \(instanceName)（仅包含 overrides，依赖下载失败）"
     }
     return "安装成功: 已导入实例 \(instanceName)（仅包含 overrides）"
@@ -332,21 +439,54 @@ private func findOverridesDir(under root: URL) -> URL? {
     return nil
 }
 
-private func installDependenciesFromVersion(
-    selectedVersion: ModrinthVersion,
+private func buildDependencies(from deps: [String: String]?) -> [ModrinthIndexProjectDependency] {
+    var result: [ModrinthIndexProjectDependency] = []
+    for (key, value) in deps ?? [:] {
+        if key == "minecraft" || key.hasSuffix("-loader") || key == "fabric" || key == "quilt" || key == "forge" || key == "neoforge" {
+            continue
+        }
+        result.append(ModrinthIndexProjectDependency(projectId: key, versionId: value, dependencyType: "required"))
+    }
+    return result
+}
+
+private func buildDependencies(from deps: [ModrinthDependency]?) -> [ModrinthIndexProjectDependency] {
+    let required = deps?.filter { $0.dependency_type == "required" } ?? []
+    return required.map {
+        ModrinthIndexProjectDependency(projectId: $0.project_id, versionId: $0.version_id, dependencyType: $0.dependency_type)
+    }
+}
+
+private func installModPackFiles(_ files: [ModrinthIndexFile], profileDir: URL) async -> Bool {
+    for file in files {
+        guard let urlStr = file.downloads.first, let url = URL(string: urlStr) else { continue }
+        let dest = profileDir.appendingPathComponent(file.path)
+        do {
+            try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let (tmp, _) = try await URLSession.shared.download(from: url)
+            try? FileManager.default.removeItem(at: dest)
+            try FileManager.default.moveItem(at: tmp, to: dest)
+        } catch {
+            return false
+        }
+    }
+    return true
+}
+
+private func installModPackDependencies(
+    _ deps: [ModrinthIndexProjectDependency],
     gameVersion: String,
     modLoader: String,
     profileDir: URL
 ) async -> Bool {
-    let deps = selectedVersion.dependencies ?? []
-    let required = deps.filter { $0.dependency_type == "required" }
-    guard !required.isEmpty else { return true }
+    let required = deps.filter { $0.dependencyType == "required" }
+    if required.isEmpty { return true }
     let modsDir = profileDir.appendingPathComponent("mods", isDirectory: true)
     try? FileManager.default.createDirectory(at: modsDir, withIntermediateDirectories: true)
     for dep in required {
-        if let projectId = dep.project_id, projectId.hasPrefix("cf-") {
+        if let projectId = dep.projectId, projectId.hasPrefix("cf-") {
             let modIdStr = String(projectId.dropFirst(3))
-            if let modId = Int(modIdStr), let versionId = dep.version_id, let fileId = Int(versionId) {
+            if let modId = Int(modIdStr), let versionId = dep.versionId, let fileId = Int(versionId) {
                 do {
                     let detail = try await fetchCurseForgeFileDetail(projectId: modId, fileId: fileId)
                     let fileName = detail.fileName
@@ -359,19 +499,19 @@ private func installDependenciesFromVersion(
                         continue
                     }
                 } catch {
-                    continue
+                    return false
                 }
             }
             continue
         }
-        if let versionId = dep.version_id {
+        if let versionId = dep.versionId {
             if let v = await fetchModrinthVersion(id: versionId),
                await downloadPrimaryModFile(from: v, to: modsDir) {
                 continue
             } else {
                 return false
             }
-        } else if let projectId = dep.project_id {
+        } else if let projectId = dep.projectId {
             let versions = fetchProjectVersions(projectId: projectId)
             let compatible = versions.first { v in
                 (v.game_versions ?? []).contains(gameVersion) &&
