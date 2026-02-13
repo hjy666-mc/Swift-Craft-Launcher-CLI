@@ -94,6 +94,15 @@ func installModrinthModpack(
             let indexURL = findFileURL(named: "modrinth.index.json", under: tmpDir)
             let manifestURL = findFileURL(named: "manifest.json", under: tmpDir)
             if indexURL == nil && manifestURL == nil {
+                if let fallbackResult = try await installOverridesOnly(
+                    selectedVersion: selected,
+                    projectId: projectId,
+                    preferredName: preferredName,
+                    tmpDir: tmpDir
+                ) {
+                    result = fallbackResult
+                    return
+                }
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式）",
                     tmpDir: tmpDir
@@ -258,6 +267,51 @@ private func writeFailureDiagnostics(reason: String, tmpDir: URL) -> String {
         return "\(reason)。解压目录: \(tmpDir.path)\n清单已写入: \(diagPath)"
     }
     return "\(reason)。解压目录: \(tmpDir.path)"
+}
+
+private func installOverridesOnly(
+    selectedVersion: ModrinthVersion,
+    projectId: String,
+    preferredName: String?,
+    tmpDir: URL
+) async throws -> String? {
+    guard let overridesDir = findOverridesDir(under: tmpDir) else { return nil }
+    let gameVersion = selectedVersion.game_versions?.first ?? ""
+    if gameVersion.isEmpty { return nil }
+    let loaders = selectedVersion.loaders ?? []
+    let modLoader: String = {
+        if loaders.contains("fabric") { return "fabric" }
+        if loaders.contains("quilt") { return "quilt" }
+        if loaders.contains("forge") { return "forge" }
+        if loaders.contains("neoforge") { return "neoforge" }
+        return "vanilla"
+    }()
+    let instanceName = (preferredName?.isEmpty == false) ? preferredName! : "modpack-\(projectId)"
+    if listInstances().contains(instanceName) {
+        return "实例已存在: \(instanceName)"
+    }
+    if let err = localCreateFullInstance(instance: instanceName, gameVersion: gameVersion, modLoader: modLoader) {
+        return "创建实例失败: \(err)"
+    }
+    let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
+    copyOverrides(from: overridesDir, to: profileDir)
+    return "安装成功: 已导入实例 \(instanceName)（仅包含 overrides）"
+}
+
+private func findOverridesDir(under root: URL) -> URL? {
+    let fm = FileManager.default
+    let candidates = ["overrides", "override", "client-overrides", "server-overrides", "privateoverrides"]
+    for name in candidates {
+        let direct = root.appendingPathComponent(name, isDirectory: true)
+        if fm.fileExists(atPath: direct.path) { return direct }
+    }
+    let enumerator = fm.enumerator(at: root, includingPropertiesForKeys: nil)
+    while let item = enumerator?.nextObject() as? URL {
+        if candidates.contains(item.lastPathComponent) {
+            return item
+        }
+    }
+    return nil
 }
 
 private func parseCurseForgeLoader(_ loaders: [CurseForgeManifest.ModLoader]) -> (type: String, version: String) {
