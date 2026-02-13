@@ -346,6 +346,21 @@ private func fetchModrinthLoaderProfile(type: String, gameVersion: String) -> Mo
     return profile
 }
 
+private func fetchModrinthAvailableGameVersions(type: String) -> [String] {
+    let versionsURL = URL(string: "https://api.modrinth.com/v2/loader/")!.appendingPathComponent(type).appendingPathComponent("versions")
+    guard let versionsData = runDownload(versionsURL),
+          let versions = try? JSONSerialization.jsonObject(with: versionsData) as? [[String: Any]] else {
+        return []
+    }
+    var set: Set<String> = []
+    for item in versions {
+        if let gvs = item["game_versions"] as? [String] {
+            for gv in gvs { set.insert(gv) }
+        }
+    }
+    return Array(set).sorted()
+}
+
 private func mavenURL(base: URL?, name: String) -> URL? {
     let path = mavenPath(name)
     let baseURL = base ?? URL(string: "https://maven.minecraftforge.net/")!
@@ -510,7 +525,8 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
             loaderGameArgs = mapped.gameArgs
             loaderJvmArgs = mapped.jvmArgs
         } else {
-            return "获取 Fabric 加载器信息失败（该 MC 版本可能暂无 Fabric Loader：\(gameVersion)）"
+            let available = fetchModrinthAvailableGameVersions(type: "fabric").suffix(10).joined(separator: ", ")
+            return "获取 Fabric 加载器信息失败（该 MC 版本可能暂无 Fabric Loader：\(gameVersion)）。可用版本示例：\(available)"
         }
     } else if loader == "quilt" {
         if let profile = fetchQuiltLoaderProfile(gameVersion: gameVersion) {
@@ -525,12 +541,14 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
             loaderGameArgs = mapped.gameArgs
             loaderJvmArgs = mapped.jvmArgs
         } else {
-            return "获取 Quilt 加载器信息失败（该 MC 版本可能暂无 Quilt Loader：\(gameVersion)）"
+            let available = fetchModrinthAvailableGameVersions(type: "quilt").suffix(10).joined(separator: ", ")
+            return "获取 Quilt 加载器信息失败（该 MC 版本可能暂无 Quilt Loader：\(gameVersion)）。可用版本示例：\(available)"
         }
     } else if loader == "forge" || loader == "neoforge" {
         let type = (loader == "neoforge") ? "neoforge" : "forge"
         guard let profile = fetchModrinthLoaderProfile(type: type, gameVersion: gameVersion) else {
-            return "获取 \(loader) 加载器信息失败（该 MC 版本可能暂无 Loader：\(gameVersion)）"
+            let available = fetchModrinthAvailableGameVersions(type: type).suffix(10).joined(separator: ", ")
+            return "获取 \(loader) 加载器信息失败（该 MC 版本可能暂无 Loader：\(gameVersion)）。可用版本示例：\(available)"
         }
         forgeProfile = profile
         loaderMainClass = profile.mainClass

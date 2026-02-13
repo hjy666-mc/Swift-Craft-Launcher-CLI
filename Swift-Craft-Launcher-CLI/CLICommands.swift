@@ -223,9 +223,25 @@ func gameLaunch(args: [String]) {
         fail("未找到实例启动记录: \(instance)")
         return
     }
-    guard var command = record["launchCommand"] as? [String], !command.isEmpty else {
-        fail("实例启动命令为空: \(instance)")
-        return
+    var command = record["launchCommand"] as? [String] ?? []
+    if command.isEmpty {
+        // 尝试本地修复（仅当已有记录包含版本/加载器）
+        let gv = (record["gameVersion"] as? String) ?? ""
+        let ml = (record["modLoader"] as? String) ?? ""
+        if !gv.isEmpty && !ml.isEmpty {
+            if let err = localCreateFullInstance(instance: instance, gameVersion: gv, modLoader: ml) {
+                fail("实例启动命令为空，且修复失败：\(err)")
+                return
+            }
+            if let refreshed = queryGameRecord(instance: instance),
+               let cmd = refreshed["launchCommand"] as? [String], !cmd.isEmpty {
+                command = cmd
+            }
+        }
+        if command.isEmpty {
+            fail("实例启动命令为空: \(instance)")
+            return
+        }
     }
 
     // 修正占位符（classpath、目录等），避免未替换导致启动失败
