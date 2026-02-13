@@ -474,7 +474,10 @@ private func executeProcessors(
 
         let procProcess = Process()
         procProcess.executableURL = URL(fileURLWithPath: java)
-        let mainClass = readJarMainClass(jarPath: jarPath)
+        var mainClass = readJarMainClass(jarPath: jarPath)
+        if mainClass == nil && jarName.contains("installertools") {
+            mainClass = "net.neoforged.installertools.ConsoleTool"
+        }
         if let mainClass {
             procProcess.arguments = ["-cp", ([jarPath] + classpath).joined(separator: ":"), mainClass] + args
         } else {
