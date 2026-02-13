@@ -32,6 +32,46 @@ private struct LoaderProfileDetail {
     let jvmArgs: [String]
 }
 
+private struct ModrinthLoaderProfile: Decodable {
+    struct Arguments: Decodable {
+        let game: [String]?
+        let jvm: [String]?
+    }
+    struct LibraryDownloads: Decodable {
+        struct Artifact: Decodable {
+            let url: URL
+            let sha1: String?
+            let path: String?
+        }
+        let artifact: Artifact?
+    }
+    struct Library: Decodable {
+        let name: String
+        let downloadable: Bool?
+        let include_in_classpath: Bool?
+        let url: URL?
+        let downloads: LibraryDownloads?
+    }
+    struct Processor: Decodable {
+        let sides: [String]?
+        let jar: String?
+        let classpath: [String]?
+        let args: [String]?
+        let outputs: [String: String]?
+    }
+    struct SidedDataEntry: Decodable {
+        let client: String
+        let server: String
+    }
+
+    let mainClass: String
+    let arguments: Arguments
+    let libraries: [Library]
+    let processors: [Processor]?
+    let data: [String: SidedDataEntry]?
+    var version: String?
+}
+
 struct AssetIndexData: Decodable {
     struct AssetObject: Decodable {
         let hash: String
@@ -279,10 +319,111 @@ private func fetchQuiltLoaderProfile(gameVersion: String) -> LoaderProfileDetail
     return parseLoaderProfile(profileData)
 }
 
+private func fetchModrinthLoaderProfile(type: String, gameVersion: String) -> ModrinthLoaderProfile? {
+    let versionsURL = URL(string: "https://api.modrinth.com/v2/loader/")!.appendingPathComponent(type).appendingPathComponent("versions")
+    guard let versionsData = runDownload(versionsURL),
+          let versions = try? JSONSerialization.jsonObject(with: versionsData) as? [[String: Any]] else {
+        return nil
+    }
+    let loaderId: String? = {
+        for item in versions {
+            guard let id = item["id"] as? String else { continue }
+            if let gv = item["game_versions"] as? [String], gv.contains(gameVersion) { return id }
+        }
+        return nil
+    }()
+    guard let selectedId = loaderId else { return nil }
+
+    let profileURL = URL(string: "https://api.modrinth.com/v2/loader/")!
+        .appendingPathComponent(type)
+        .appendingPathComponent(selectedId)
+        .appendingPathComponent("profile")
+    guard let profileData = runDownload(profileURL) else { return nil }
+    guard var profile = try? JSONDecoder().decode(ModrinthLoaderProfile.self, from: profileData) else { return nil }
+    profile.version = selectedId
+    return profile
+}
+
+private func mavenURL(base: URL?, name: String) -> URL? {
+    let path = mavenPath(name)
+    let baseURL = base ?? URL(string: "https://maven.minecraftforge.net/")!
+    return URL(string: path, relativeTo: baseURL)
+}
+
+private func applyTemplateVars(_ text: String, gameDir: URL, metaDir: URL, gameVersion: String, instance: String) -> String {
+    let variables: [String: String] = [
+        "{MINECRAFT_JAR}": metaDir.appendingPathComponent("versions/\(gameVersion)/\(gameVersion).jar").path,
+        "{MC_DIR}": gameDir.path,
+        "{MC_VERSION}": gameVersion,
+        "{GAME_DIR}": gameDir.path,
+        "{ROOT_DIR}": gameDir.deletingLastPathComponent().path,
+        "{INSTALL_DIR}": metaDir.path,
+        "{VERSION_NAME}": gameVersion,
+        "{SIDE}": "client",
+    ]
+    var result = text
+    for (k, v) in variables { result = result.replacingOccurrences(of: k, with: v) }
+    return result
+}
+
+private func executeProcessors(
+    processors: [ModrinthLoaderProfile.Processor],
+    data: [String: ModrinthLoaderProfile.SidedDataEntry]?,
+    metaDir: URL,
+    gameDir: URL,
+    gameVersion: String,
+    instance: String
+) -> String? {
+    let java = normalizedJavaPath(loadConfig().javaPath)
+    guard FileManager.default.isExecutableFile(atPath: java) else {
+        return "Java 路径为空或不可执行"
+    }
+    for (index, proc) in processors.enumerated() {
+        if let sides = proc.sides, !sides.contains("client") { continue }
+        guard let jarName = proc.jar else { continue }
+        let jarPath = metaDir.appendingPathComponent(mavenPath(jarName)).path
+        guard FileManager.default.fileExists(atPath: jarPath) else {
+            return "processor 缺少 jar: \(jarName)"
+        }
+
+        var classpath: [String] = []
+        if let cp = proc.classpath {
+            classpath = cp.map { metaDir.appendingPathComponent(mavenPath($0)).path }
+        }
+
+        var args: [String] = []
+        for arg in proc.args ?? [] {
+            if arg.hasPrefix("{") && arg.hasSuffix("}") {
+                let key = String(arg.dropFirst().dropLast())
+                if let entry = data?[key] {
+                    args.append(applyTemplateVars(entry.client, gameDir: gameDir, metaDir: metaDir, gameVersion: gameVersion, instance: instance))
+                }
+            } else {
+                args.append(applyTemplateVars(arg, gameDir: gameDir, metaDir: metaDir, gameVersion: gameVersion, instance: instance))
+            }
+        }
+
+        let procProcess = Process()
+        procProcess.executableURL = URL(fileURLWithPath: java)
+        procProcess.arguments = ["-cp", ([jarPath] + classpath).joined(separator: ":"), jarName] + args
+        procProcess.currentDirectoryURL = gameDir
+        do {
+            try procProcess.run()
+            procProcess.waitUntilExit()
+            if procProcess.terminationStatus != 0 {
+                return "processor 执行失败: \(jarName) (\(index + 1)/\(processors.count))"
+            }
+        } catch {
+            return "processor 执行失败: \(error.localizedDescription)"
+        }
+    }
+    return nil
+}
+
 func localCreateFullInstance(instance: String, gameVersion: String, modLoader: String) -> String? {
     let loader = modLoader.lowercased()
-    if !["vanilla", "fabric", "quilt"].contains(loader) {
-        return "当前 CLI 本地创建仅支持 vanilla/fabric/quilt"
+    if !["vanilla", "fabric", "quilt", "forge", "neoforge"].contains(loader) {
+        return "当前 CLI 本地创建仅支持 vanilla/fabric/quilt/forge/neoforge"
     }
 
     let config = loadConfig()
@@ -336,6 +477,7 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
     var loaderMainClass: String? = nil
     var loaderGameArgs: [String] = []
     var loaderJvmArgs: [String] = []
+    var forgeProfile: ModrinthLoaderProfile? = nil
     if loader == "fabric" {
         guard let profile = fetchFabricLoaderProfile(gameVersion: gameVersion) else {
             return "获取 Fabric 加载器信息失败"
@@ -352,6 +494,22 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
         loaderMainClass = profile.mainClass
         loaderGameArgs = profile.gameArgs
         loaderJvmArgs = profile.jvmArgs
+    } else if loader == "forge" || loader == "neoforge" {
+        let type = (loader == "neoforge") ? "neoforge" : "forge"
+        guard let profile = fetchModrinthLoaderProfile(type: type, gameVersion: gameVersion) else {
+            return "获取 \(loader) 加载器信息失败"
+        }
+        forgeProfile = profile
+        loaderMainClass = profile.mainClass
+        loaderGameArgs = profile.arguments.game ?? []
+        loaderJvmArgs = profile.arguments.jvm ?? []
+        let libs = profile.libraries.filter { ($0.downloadable ?? true) }
+        for lib in libs {
+            let path = lib.downloads?.artifact?.path ?? mavenPath(lib.name)
+            if let url = lib.downloads?.artifact?.url ?? mavenURL(base: lib.url, name: lib.name) {
+                extraLibraries.append(.init(name: lib.name, path: path, url: url, sha1: lib.downloads?.artifact?.sha1))
+            }
+        }
     }
 
     var allLibraries: [ParsedVersionDetail.Library] = detail.libraries
@@ -369,6 +527,19 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
         let dest = metaDir.appendingPathComponent(lib.path)
         if let err = downloadToFile(url: lib.url, dest: dest, expectedSha1: lib.sha1) {
             return "下载依赖失败 \(lib.name): \(err)"
+        }
+    }
+
+    if let profile = forgeProfile, let processors = profile.processors, !processors.isEmpty {
+        if let err = executeProcessors(
+            processors: processors,
+            data: profile.data,
+            metaDir: metaDir,
+            gameDir: profileDir,
+            gameVersion: gameVersion,
+            instance: instance
+        ) {
+            return err
         }
     }
 
