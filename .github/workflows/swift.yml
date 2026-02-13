@@ -27,3 +27,23 @@ jobs:
             -configuration Debug \
             -destination "platform=macOS" \
             build
+      - name: Locate built binary
+        id: locate
+        run: |
+          BUILD_SETTINGS="$(xcodebuild \
+            -project Swift-Craft-Launcher-CLI.xcodeproj \
+            -scheme Swift-Craft-Launcher-CLI \
+            -configuration Debug \
+            -showBuildSettings)"
+          TARGET_BUILD_DIR="$(printf '%s\n' "$BUILD_SETTINGS" | awk -F' = ' '/TARGET_BUILD_DIR/ {print $2; exit}')"
+          EXECUTABLE_PATH="$(printf '%s\n' "$BUILD_SETTINGS" | awk -F' = ' '/EXECUTABLE_PATH/ {print $2; exit}')"
+          BIN_PATH="${TARGET_BUILD_DIR}/${EXECUTABLE_PATH}"
+          echo "bin_path=${BIN_PATH}" >> "$GITHUB_OUTPUT"
+          ls -l "${BIN_PATH}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scl-macos-debug
+          path: ${{ steps.locate.outputs.bin_path }}
+          if-no-files-found: error
