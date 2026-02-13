@@ -559,26 +559,24 @@ func gameCreate(args: [String]) {
             success("已创建实例: \(actualName) (MC=\(gameVersion), Loader=\(modLoader))")
         }
     } else {
-        let fallbackError = createLocalPlaceholderInstance(instance: name, gameVersion: gameVersion, modLoader: modLoader)
-        if let fallbackError {
-            renderer.finish(success: false, message: "实例创建失败")
-            fail("主程序创建失败，且本地兜底创建失败：\(fallbackError)")
+        // 主程序未响应，直接使用 CLI 本地完整创建（失败则报错，不再做占位）
+        if let localErr = localCreateFullInstance(instance: name, gameVersion: gameVersion, modLoader: modLoader) {
+            renderer.finish(success: false, message: "本地创建失败")
+            fail("实例创建失败：主程序无响应，本地创建失败：\(localErr)")
             return
         }
-        renderer.finish(success: true, message: "主程序未响应，已本地创建")
+        renderer.finish(success: true, message: "本地创建完成")
         if jsonOutputEnabled {
             printJSON([
                 "ok": true,
                 "instance": name,
                 "gameVersion": gameVersion,
                 "modLoader": modLoader,
-                "mode": "local-fallback",
-                "message": "主程序未响应，已本地创建占位实例",
+                "mode": "local-full",
+                "message": "已在 CLI 内完成创建与下载",
             ])
         } else {
-            warn("主程序未返回创建结果，已切换本地兜底创建")
-            success("已创建实例: \(name) (MC=\(gameVersion), Loader=\(modLoader))")
-            info("提示：该实例为占位创建，若要可启动请在主程序中完成正式创建/下载流程。")
+            success("已在 CLI 内完成实例创建: \(name) (MC=\(gameVersion), Loader=\(modLoader))")
         }
     }
 }

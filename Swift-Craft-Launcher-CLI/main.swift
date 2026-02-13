@@ -1,9 +1,11 @@
 import ArgumentParser
 
-let args = Array(CommandLine.arguments.dropFirst())
+var args = Array(CommandLine.arguments.dropFirst())
+jsonOutputEnabled = args.contains("--json")
+args.removeAll(where: { $0 == "--json" })
+
 if args.isEmpty || args == ["--help"] || args == ["-h"] || args == ["help"] {
-    jsonOutputEnabled = false
     printGlobalHelp()
 } else {
-    SCL.main()
+    SCL.main(args)
 }

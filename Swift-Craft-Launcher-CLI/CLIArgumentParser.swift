@@ -6,7 +6,7 @@ struct GlobalOptions: ParsableArguments {
 }
 
 private func applyGlobal(_ global: GlobalOptions) {
-    jsonOutputEnabled = global.json
+    jsonOutputEnabled = jsonOutputEnabled || global.json
 }
 
 private func appendOption(_ args: inout [String], flag: String, value: String?) {
@@ -29,8 +29,9 @@ struct SCL: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scl",
         abstract: "Swift Craft Launcher CLI",
-        subcommands: [SetCommand.self, GetCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self]
+        subcommands: [SetCommand.self, GetCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self, ShellCommand.self]
     )
+    @OptionGroup var global: GlobalOptions
 }
 
 struct SetCommand: ParsableCommand {
@@ -61,6 +62,7 @@ struct GameCommand: ParsableCommand {
         abstract: "游戏实例管理",
         subcommands: [GameList.self, GameStatus.self, GameSearch.self, GameConfig.self, GameCreate.self, GameLaunch.self, GameStop.self, GameDelete.self]
     )
+    @OptionGroup var global: GlobalOptions
 }
 
 struct GameList: ParsableCommand {
@@ -188,6 +190,7 @@ struct AccountCommand: ParsableCommand {
         abstract: "账号管理",
         subcommands: [AccountList.self, AccountCreate.self, AccountDelete.self, AccountSetDefault.self, AccountShow.self]
     )
+    @OptionGroup var global: GlobalOptions
 }
 
 struct AccountList: ParsableCommand {
@@ -252,6 +255,7 @@ struct ResourcesCommand: ParsableCommand {
         abstract: "资源管理",
         subcommands: [ResourcesSearch.self, ResourcesInstall.self, ResourcesList.self, ResourcesRemove.self]
     )
+    @OptionGroup var global: GlobalOptions
 }
 
 struct ResourcesSearch: ParsableCommand {
@@ -376,5 +380,116 @@ struct ManCommand: ParsableCommand {
         appendFlag(&args, flag: "--install", enabled: install)
         appendFlag(&args, flag: "--user", enabled: user)
         handleMan(args: args)
+    }
+}
+
+private let sclShellBanner = """
+ ____    ____     __                   __              ___    ___
+/\\  _`\\ /\\  _`\\  /\\ \\                 /\\ \\            /\\_ \\  /\\_ \\
+\\ \\,\\L\\_\\ \\/\\_\\\\ \\ \\            ____\\ \\ \\___      __\\//\\ \\ \\//\\ \\
+ \\/_\\__ \\\\ \\ \\/_/_\\ \\ \\  __      /',__\\\\ \\  _ `\\  /'__`\\\\ \\ \\  \\ \\ \\
+   /\\ \\L\\ \\ \\\\ \\L\\ \\\\ \\ \\L\\ \\    /\\__, `\\\\ \\ \\ \\ \\/\\  __/ \\_\\ \\_ \\_\\ \\_
+   \\ `\\____\\ \\____/ \\ \\____/    \\/\\____/ \\ \\_\\ \\_\\ \\____\\/\\____\\/\\____\\
+    \\/_____/\\/___/   \\/___/      \\/___/   \\/_/\\/_/\\/____/\\/____/\\/____/
+"""
+
+private func splitShellInput(_ line: String) -> [String] {
+    var tokens: [String] = []
+    var current = ""
+    var inSingleQuote = false
+    var inDoubleQuote = false
+    var isEscaping = false
+
+    for ch in line {
+        if isEscaping {
+            current.append(ch)
+            isEscaping = false
+            continue
+        }
+
+        if ch == "\\" {
+            isEscaping = true
+            continue
+        }
+
+        if ch == "'" && !inDoubleQuote {
+            inSingleQuote.toggle()
+            continue
+        }
+
+        if ch == "\"" && !inSingleQuote {
+            inDoubleQuote.toggle()
+            continue
+        }
+
+        if ch.isWhitespace && !inSingleQuote && !inDoubleQuote {
+            if !current.isEmpty {
+                tokens.append(current)
+                current.removeAll(keepingCapacity: true)
+            }
+            continue
+        }
+
+        current.append(ch)
+    }
+
+    if !current.isEmpty {
+        tokens.append(current)
+    }
+
+    return tokens
+}
+
+private func runShellCommand(_ line: String) {
+    let tokens = splitShellInput(line)
+    guard let command = tokens.first else { return }
+    let args = Array(tokens.dropFirst())
+
+    switch command {
+    case "set":
+        handleSet(args: args)
+    case "get":
+        handleGet(args: args)
+    case "game":
+        handleGame(args: args)
+    case "account":
+        handleAccount(args: args)
+    case "resources":
+        handleResources(args: args)
+    case "completion":
+        handleCompletion(args: args)
+    case "man":
+        handleMan(args: args)
+    case "help":
+        printGlobalHelp()
+    case "clear":
+        clearScreen()
+    case "shell":
+        warn("当前已在 sclshell 中")
+    default:
+        fail("未知命令: \(command)")
+    }
+}
+
+struct ShellCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "shell", abstract: "进入交互式 sclshell")
+    @OptionGroup var global: GlobalOptions
+
+    mutating func run() throws {
+        applyGlobal(global)
+        clearScreen()
+        print(stylize(sclShellBanner, ANSI.bold + ANSI.cyan))
+        print(stylize("输入 help 查看命令，输入 exit/quit 退出。", ANSI.gray))
+        while true {
+            print(stylize("sclshell> ", ANSI.blue), terminator: "")
+            guard let line = readLine() else {
+                print("")
+                break
+            }
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty { continue }
+            if trimmed == "exit" || trimmed == "quit" { break }
+            runShellCommand(trimmed)
+        }
     }
 }
