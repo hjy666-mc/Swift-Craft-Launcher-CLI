@@ -55,7 +55,7 @@ private func installZshCompletion() {
 
     let rcPath = home.appendingPathComponent(".zshrc")
     let marker = "# scl completion"
-    let block = "\n\(marker)\nif ! [[ \"$fpath\" == *\"$HOME/.zsh/completions\"* ]]; then\n  fpath=(\"$HOME/.zsh/completions\" $fpath)\nfi\nautoload -Uz compinit && compinit\n"
+    let block = "\n\(marker)\nif ! [[ \"$fpath\" == *\"$HOME/.zsh/completions\"* ]]; then\n  fpath=(\"$HOME/.zsh/completions\" $fpath)\nfi\nautoload -Uz compinit && compinit\nzstyle ':completion:*' menu select\nbindkey '^I' menu-complete\n"
     appendBlockIfMissing(fileURL: rcPath, marker: marker, block: block)
     success("已安装 zsh 补全: \(scriptPath.path)\n请新开终端或执行: source ~/.zshrc")
 }
