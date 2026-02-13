@@ -85,7 +85,9 @@ private func runDownload(_ url: URL) -> Data? {
     let sem = DispatchSemaphore(value: 0)
     var output: Data?
     var errorText: String?
-    let task = URLSession.shared.dataTask(with: url) { data, _, error in
+    var request = URLRequest(url: url)
+    request.setValue("SwiftCraftLauncher-CLI", forHTTPHeaderField: "User-Agent")
+    let task = URLSession.shared.dataTask(with: request) { data, _, error in
         output = data
         if let error { errorText = error.localizedDescription }
         sem.signal()
@@ -105,7 +107,7 @@ private func runDownload(_ url: URL) -> Data? {
 private func runCurlDownload(url: URL) -> Data? {
     let task = Process()
     task.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
-    task.arguments = ["-L", "-s", url.absoluteString]
+    task.arguments = ["-L", "-s", "-A", "SwiftCraftLauncher-CLI", url.absoluteString]
     let pipe = Pipe()
     task.standardOutput = pipe
     task.standardError = Pipe()
@@ -350,6 +352,23 @@ private func mavenURL(base: URL?, name: String) -> URL? {
     return URL(string: path, relativeTo: baseURL)
 }
 
+private func mapModrinthProfileToLoader(_ profile: ModrinthLoaderProfile) -> LoaderProfileDetail {
+    var libs: [LoaderProfileDetail.Library] = []
+    let items = profile.libraries.filter { ($0.downloadable ?? true) }
+    for lib in items {
+        let path = lib.downloads?.artifact?.path ?? mavenPath(lib.name)
+        if let url = lib.downloads?.artifact?.url ?? mavenURL(base: lib.url, name: lib.name) {
+            libs.append(.init(name: lib.name, path: path, url: url, sha1: lib.downloads?.artifact?.sha1))
+        }
+    }
+    return .init(
+        mainClass: profile.mainClass,
+        libraries: libs,
+        gameArgs: profile.arguments.game ?? [],
+        jvmArgs: profile.arguments.jvm ?? []
+    )
+}
+
 private func applyTemplateVars(_ text: String, gameDir: URL, metaDir: URL, gameVersion: String, instance: String) -> String {
     let variables: [String: String] = [
         "{MINECRAFT_JAR}": metaDir.appendingPathComponent("versions/\(gameVersion)/\(gameVersion).jar").path,
@@ -479,21 +498,35 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
     var loaderJvmArgs: [String] = []
     var forgeProfile: ModrinthLoaderProfile? = nil
     if loader == "fabric" {
-        guard let profile = fetchFabricLoaderProfile(gameVersion: gameVersion) else {
+        if let profile = fetchFabricLoaderProfile(gameVersion: gameVersion) {
+            extraLibraries = profile.libraries
+            loaderMainClass = profile.mainClass
+            loaderGameArgs = profile.gameArgs
+            loaderJvmArgs = profile.jvmArgs
+        } else if let modrinth = fetchModrinthLoaderProfile(type: "fabric", gameVersion: gameVersion) {
+            let mapped = mapModrinthProfileToLoader(modrinth)
+            extraLibraries = mapped.libraries
+            loaderMainClass = mapped.mainClass
+            loaderGameArgs = mapped.gameArgs
+            loaderJvmArgs = mapped.jvmArgs
+        } else {
             return "获取 Fabric 加载器信息失败"
         }
-        extraLibraries = profile.libraries
-        loaderMainClass = profile.mainClass
-        loaderGameArgs = profile.gameArgs
-        loaderJvmArgs = profile.jvmArgs
     } else if loader == "quilt" {
-        guard let profile = fetchQuiltLoaderProfile(gameVersion: gameVersion) else {
+        if let profile = fetchQuiltLoaderProfile(gameVersion: gameVersion) {
+            extraLibraries = profile.libraries
+            loaderMainClass = profile.mainClass
+            loaderGameArgs = profile.gameArgs
+            loaderJvmArgs = profile.jvmArgs
+        } else if let modrinth = fetchModrinthLoaderProfile(type: "quilt", gameVersion: gameVersion) {
+            let mapped = mapModrinthProfileToLoader(modrinth)
+            extraLibraries = mapped.libraries
+            loaderMainClass = mapped.mainClass
+            loaderGameArgs = mapped.gameArgs
+            loaderJvmArgs = mapped.jvmArgs
+        } else {
             return "获取 Quilt 加载器信息失败"
         }
-        extraLibraries = profile.libraries
-        loaderMainClass = profile.mainClass
-        loaderGameArgs = profile.gameArgs
-        loaderJvmArgs = profile.jvmArgs
     } else if loader == "forge" || loader == "neoforge" {
         let type = (loader == "neoforge") ? "neoforge" : "forge"
         guard let profile = fetchModrinthLoaderProfile(type: type, gameVersion: gameVersion) else {
