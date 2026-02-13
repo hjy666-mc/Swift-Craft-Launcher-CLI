@@ -397,7 +397,8 @@ private func copyOverrides(from overridesDir: URL, to profileDir: URL) {
     guard fm.fileExists(atPath: overridesDir.path) else { return }
     let enumerator = fm.enumerator(at: overridesDir, includingPropertiesForKeys: nil)
     while let item = enumerator?.nextObject() as? URL {
-        let rel = item.path.replacingOccurrences(of: overridesDir.path + "/", with: "")
+        var rel = item.path.replacingOccurrences(of: overridesDir.path + "/", with: "")
+        rel = normalizePrivateOverridePath(rel)
         let dest = profileDir.appendingPathComponent(rel)
         if item.hasDirectoryPath {
             try? fm.createDirectory(at: dest, withIntermediateDirectories: true)
@@ -407,6 +408,27 @@ private func copyOverrides(from overridesDir: URL, to profileDir: URL) {
             try? fm.copyItem(at: item, to: dest)
         }
     }
+}
+
+private func normalizePrivateOverridePath(_ path: String) -> String {
+    var parts = path.split(separator: "/").map(String.init)
+    guard !parts.isEmpty else { return path }
+    if parts[0].lowercased() == "privateoverrides" {
+        parts.removeFirst()
+    }
+    guard !parts.isEmpty else { return "" }
+    let map: [String: String] = [
+        "privateconfig": "config",
+        "privatemods": "mods",
+        "privateresourcepacks": "resourcepacks",
+        "privateshaderpacks": "shaderpacks",
+        "privateconfigureddefaults": "configureddefaults"
+    ]
+    let key = parts[0].lowercased()
+    if let mapped = map[key] {
+        parts[0] = mapped
+    }
+    return parts.joined(separator: "/")
 }
 
 private func findFileURL(named fileName: String, under root: URL) -> URL? {
