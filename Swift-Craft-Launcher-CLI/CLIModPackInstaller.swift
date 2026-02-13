@@ -201,6 +201,7 @@ func installModrinthModpack(
             var indexURL: URL? = nil
             var manifestURL: URL? = nil
             var firstTmpDir: URL? = nil
+            var indexDecodeFailed = false
             for (idx, file) in orderedFiles.enumerated() {
                 let dir = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
                 try fm.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -249,65 +250,69 @@ func installModrinthModpack(
                 )
                 return
             }
-            if let indexURL,
-               let indexData = try? Data(contentsOf: indexURL),
-               let index = try? JSONDecoder().decode(ModrinthIndex.self, from: indexData) {
-                let deps = index.dependencies ?? [:]
-                let gameVersion = deps["minecraft"] ?? ""
-                let modLoader: String = {
-                    if deps["fabric-loader"] != nil { return "fabric" }
-                    if deps["quilt-loader"] != nil { return "quilt" }
-                    if deps["forge"] != nil { return "forge" }
-                    if deps["neoforge"] != nil { return "neoforge" }
-                    return "vanilla"
-                }()
-                guard !gameVersion.isEmpty else {
-                    result = "整合包未包含 minecraft 版本信息"
+            if let indexURL {
+                if let indexData = try? Data(contentsOf: indexURL),
+                   let index = try? JSONDecoder().decode(ModrinthIndex.self, from: indexData) {
+                    let deps = index.dependencies ?? [:]
+                    let gameVersion = deps["minecraft"] ?? ""
+                    let modLoader: String = {
+                        if deps["fabric-loader"] != nil { return "fabric" }
+                        if deps["quilt-loader"] != nil { return "quilt" }
+                        if deps["forge"] != nil { return "forge" }
+                        if deps["neoforge"] != nil { return "neoforge" }
+                        return "vanilla"
+                    }()
+                    guard !gameVersion.isEmpty else {
+                        result = "整合包未包含 minecraft 版本信息"
+                        return
+                    }
+
+                    let instanceName = (preferredName?.isEmpty == false) ? preferredName! : (index.name ?? "modpack-\(projectId)")
+                    if listInstances().contains(instanceName) {
+                        result = "实例已存在: \(instanceName)"
+                        return
+                    }
+
+                    if let err = localCreateFullInstance(instance: instanceName, gameVersion: gameVersion, modLoader: modLoader) {
+                        result = "创建实例失败: \(err)"
+                        return
+                    }
+
+                    let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
+                    let overridesDir = workingDir.appendingPathComponent(index.overrides ?? "overrides", isDirectory: true)
+                    copyOverrides(from: overridesDir, to: profileDir)
+
+                    let indexInfo = ModrinthIndexInfo(
+                        gameVersion: gameVersion,
+                        loaderType: modLoader,
+                        loaderVersion: "",
+                        modPackName: index.name ?? instanceName,
+                        modPackVersion: selected.version_number,
+                        files: index.files.map { file in
+                            ModrinthIndexFile(
+                                path: file.path,
+                                hashes: file.hashes ?? [:],
+                                downloads: file.downloads,
+                                fileSize: 0,
+                                env: nil,
+                                source: .modrinth
+                            )
+                        },
+                        dependencies: buildDependencies(from: index.dependencies)
+                    )
+                    let filesOk = await installModPackFiles(indexInfo.files, profileDir: profileDir)
+                    let depsOk = await installModPackDependencies(indexInfo.dependencies, gameVersion: gameVersion, modLoader: modLoader, profileDir: profileDir)
+                    if !filesOk || !depsOk {
+                        result = "安装完成: 已导入实例 \(instanceName)（资源下载失败）"
+                        return
+                    }
+
+                    result = "安装成功: 已导入实例 \(instanceName)"
                     return
+                } else {
+                    indexDecodeFailed = true
+                    writeDebugLog("[modpack-debug] index decode failed at \(indexURL.path)")
                 }
-
-                let instanceName = (preferredName?.isEmpty == false) ? preferredName! : (index.name ?? "modpack-\(projectId)")
-                if listInstances().contains(instanceName) {
-                    result = "实例已存在: \(instanceName)"
-                    return
-                }
-
-                if let err = localCreateFullInstance(instance: instanceName, gameVersion: gameVersion, modLoader: modLoader) {
-                    result = "创建实例失败: \(err)"
-                    return
-                }
-
-                let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
-                let overridesDir = workingDir.appendingPathComponent(index.overrides ?? "overrides", isDirectory: true)
-                copyOverrides(from: overridesDir, to: profileDir)
-
-                let indexInfo = ModrinthIndexInfo(
-                    gameVersion: gameVersion,
-                    loaderType: modLoader,
-                    loaderVersion: "",
-                    modPackName: index.name ?? instanceName,
-                    modPackVersion: selected.version_number,
-                    files: index.files.map { file in
-                        ModrinthIndexFile(
-                            path: file.path,
-                            hashes: file.hashes ?? [:],
-                            downloads: file.downloads,
-                            fileSize: 0,
-                            env: nil,
-                            source: .modrinth
-                        )
-                    },
-                    dependencies: buildDependencies(from: index.dependencies)
-                )
-                let filesOk = await installModPackFiles(indexInfo.files, profileDir: profileDir)
-                let depsOk = await installModPackDependencies(indexInfo.dependencies, gameVersion: gameVersion, modLoader: modLoader, profileDir: profileDir)
-                if !filesOk || !depsOk {
-                    result = "安装完成: 已导入实例 \(instanceName)（资源下载失败）"
-                    return
-                }
-
-                result = "安装成功: 已导入实例 \(instanceName)"
-                return
             }
 
             if let manifestURL,
@@ -345,6 +350,20 @@ func installModrinthModpack(
 
                 result = "安装成功: 已导入实例 \(instanceName)"
                 return
+            }
+
+            if indexDecodeFailed {
+                writeDebugLog("[modpack-debug] retry fallback after index decode failure")
+                let fallbackResult = try await installFromVersionDependenciesOnly(
+                    selectedVersion: selected,
+                    projectId: projectId,
+                    preferredName: preferredName,
+                    tmpDir: workingDir
+                )
+                if let fallbackResult {
+                    result = fallbackResult
+                    return
+                }
             }
 
             let indexInfo: String = {
