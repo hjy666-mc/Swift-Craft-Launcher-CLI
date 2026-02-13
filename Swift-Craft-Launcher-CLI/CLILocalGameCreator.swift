@@ -525,7 +525,8 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
             return "获取 Quilt 加载器信息失败（该 MC 版本可能暂无 Quilt Loader：\(gameVersion)）"
         }
     } else if loader == "forge" || loader == "neoforge" {
-        let type = (loader == "neoforge") ? "neoforge" : "forge"
+        // Modrinth launcher-meta uses "neo" for NeoForge
+        let type = (loader == "neoforge") ? "neo" : "forge"
         guard let profile = fetchModrinthLoaderProfile(type: type, gameVersion: gameVersion) else {
             return "获取 \(loader) 加载器信息失败（该 MC 版本可能暂无 Loader：\(gameVersion)）"
         }
