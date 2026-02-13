@@ -217,6 +217,11 @@ func installModrinthModpack(
                 }
             }
             let workingDir = tmpDir ?? firstTmpDir ?? fm.temporaryDirectory
+            let versionFileList = selected.files.map { file in
+                let p = file.primary == true ? "true" : "false"
+                let t = file.file_type ?? ""
+                return "\(file.filename) | primary=\(p) | type=\(t) | url=\(file.url)"
+            }.joined(separator: "\n")
             if indexURL == nil && manifestURL == nil {
                 if let fallbackResult = try await installOverridesOnly(
                     selectedVersion: selected,
@@ -229,7 +234,8 @@ func installModrinthModpack(
                 }
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式）",
-                    tmpDir: workingDir
+                    tmpDir: workingDir,
+                    extra: "版本文件列表:\n\(versionFileList)"
                 )
                 return
             }
@@ -342,7 +348,8 @@ func installModrinthModpack(
             }
             result = writeFailureDiagnostics(
                 reason: "索引文件解析失败（可能格式不支持）",
-                tmpDir: workingDir
+                tmpDir: workingDir,
+                extra: "版本文件列表:\n\(versionFileList)"
             )
         } catch {
             result = "安装失败: \(error.localizedDescription)"
@@ -408,9 +415,10 @@ private func writeDebugListing(_ listing: String) -> String? {
     }
 }
 
-private func writeFailureDiagnostics(reason: String, tmpDir: URL) -> String {
+private func writeFailureDiagnostics(reason: String, tmpDir: URL, extra: String? = nil) -> String {
     let listing = listFilesForDebug(under: tmpDir, maxItems: 300)
-    let diagPath = writeDebugListing(listing)
+    let combined = extra == nil ? listing : "\(extra!)\n\n解压文件列表:\n\(listing)"
+    let diagPath = writeDebugListing(combined)
     if let diagPath {
         return "\(reason)。解压目录: \(tmpDir.path)\n清单已写入: \(diagPath)"
     }
