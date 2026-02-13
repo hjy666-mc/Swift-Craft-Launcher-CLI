@@ -192,6 +192,15 @@ func installModrinthModpack(
                 return
             }
 
+            if let fallbackResult = try await installOverridesOnly(
+                selectedVersion: selected,
+                projectId: projectId,
+                preferredName: preferredName,
+                tmpDir: tmpDir
+            ) {
+                result = fallbackResult
+                return
+            }
             result = writeFailureDiagnostics(
                 reason: "索引文件解析失败（可能格式不支持）",
                 tmpDir: tmpDir
