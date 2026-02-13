@@ -65,7 +65,7 @@ struct CLIConfig: Codable {
             defaultInstance: "",
             preferredResourceType: "mod",
             pageSize: 12,
-            autoOpenMainApp: true
+            autoOpenMainApp: false
         )
     }
 }

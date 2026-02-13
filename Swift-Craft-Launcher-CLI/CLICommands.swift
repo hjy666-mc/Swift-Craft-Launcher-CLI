@@ -228,7 +228,7 @@ func gameLaunch(args: [String]) {
         return
     }
 
-    // 修正主程序占位符（classpath、目录等），避免未替换导致启动失败
+    // 修正占位符（classpath、目录等），避免未替换导致启动失败
     let profileDir = profileRoot().appendingPathComponent(instance, isDirectory: true)
     let metaDir = URL(fileURLWithPath: loadConfig().gameDir, isDirectory: true)
         .appendingPathComponent("meta", isDirectory: true)
@@ -307,7 +307,7 @@ func gameLaunch(args: [String]) {
     let javaFromRecord = (record["javaPath"] as? String) ?? ""
     let java = valueOf("--java", in: args) ?? (javaFromRecord.isEmpty ? config.javaPath : javaFromRecord)
     guard !java.isEmpty else {
-        fail("Java 路径为空，请使用 --java 指定或在主程序中配置")
+        fail("Java 路径为空，请使用 --java 指定或在 CLI 配置中设置")
         return
     }
 
@@ -573,51 +573,55 @@ func gameCreate(args: [String]) {
         return
     }
 
-    let cfg = loadConfig()
     let showProgress = !jsonOutputEnabled && isatty(STDOUT_FILENO) == 1
     let renderer = InstallProgressRenderer(enabled: showProgress)
-    renderer.start(title: "请求主程序创建实例")
-    ensureMainAppCreateGameResponseObserver()
-    var appOpened = false
-    if cfg.autoOpenMainApp {
-        renderer.update(progress: 0.08, title: "尝试唤起主程序")
-        appOpened = openMainApp(emitMessage: !showProgress && !jsonOutputEnabled)
-        usleep(350_000)
+
+    // 本地直装：vanilla/fabric/quilt
+    if ["vanilla", "fabric", "quilt"].contains(modLoader) {
+        renderer.start(title: "本地创建实例")
+        if let localErr = localCreateFullInstance(instance: name, gameVersion: gameVersion, modLoader: modLoader) {
+            renderer.finish(success: false, message: "本地创建失败")
+            fail("实例创建失败：\(localErr)")
+            return
+        }
+        renderer.finish(success: true, message: "本地创建完成")
+        if jsonOutputEnabled {
+            printJSON([
+                "ok": true,
+                "instance": name,
+                "gameVersion": gameVersion,
+                "modLoader": modLoader,
+                "mode": "local-full",
+                "message": "已在 CLI 内完成创建与下载",
+            ])
+        } else {
+            success("已在 CLI 内完成实例创建: \(name) (MC=\(gameVersion), Loader=\(modLoader))")
+        }
+        return
     }
 
-    let maxAttempts = (cfg.autoOpenMainApp && appOpened) ? 2 : 1
-    var result: (ok: Bool, message: String, instance: String?) = (false, "创建失败", nil)
-    for attempt in 1...maxAttempts {
-        let requestId = UUID().uuidString
-        let responseFile = fm.temporaryDirectory
-            .appendingPathComponent("swiftcraftlauncher_game_create_response", isDirectory: true)
-            .appendingPathComponent("\(requestId).json", isDirectory: false).path
-        requestMainAppCreateGame(
-            requestId: requestId,
-            name: name,
-            gameVersion: gameVersion,
-            modLoader: modLoader,
-            responseFile: responseFile
-        )
-        renderer.update(progress: 0.2, title: "等待主程序创建实例")
-        let timeout = (cfg.autoOpenMainApp && attempt < maxAttempts) ? 2.0 : 3.0
-        result = waitMainAppCreateGameResult(
-            requestId: requestId,
-            responseFile: responseFile,
-            timeout: timeout
-        ) { elapsed in
-            let p = min(0.95, 0.2 + (elapsed / 300.0) * 0.7)
-            renderer.update(progress: p, title: "等待主程序创建实例")
-        }
-        if result.ok {
-            break
-        }
-        if attempt < maxAttempts && (result.message.contains("主程序尚未就绪") || result.message.contains("创建超时")) {
-            renderer.update(progress: 0.15, title: "主程序初始化中，重试请求")
-            usleep(300_000)
-            continue
-        }
-        break
+    // forge / neoforge 暂未本地实现，仅在主程序已运行时可尝试请求
+    renderer.start(title: "尝试请求主程序创建实例（不会自动唤起）")
+    ensureMainAppCreateGameResponseObserver()
+    let requestId = UUID().uuidString
+    let responseFile = fm.temporaryDirectory
+        .appendingPathComponent("swiftcraftlauncher_game_create_response", isDirectory: true)
+        .appendingPathComponent("\(requestId).json", isDirectory: false).path
+    requestMainAppCreateGame(
+        requestId: requestId,
+        name: name,
+        gameVersion: gameVersion,
+        modLoader: modLoader,
+        responseFile: responseFile
+    )
+    renderer.update(progress: 0.2, title: "等待主程序创建实例")
+    let result = waitMainAppCreateGameResult(
+        requestId: requestId,
+        responseFile: responseFile,
+        timeout: 3.0
+    ) { elapsed in
+        let p = min(0.95, 0.2 + (elapsed / 300.0) * 0.7)
+        renderer.update(progress: p, title: "等待主程序创建实例")
     }
 
     if result.ok {
@@ -634,25 +638,8 @@ func gameCreate(args: [String]) {
             success("已创建实例: \(actualName) (MC=\(gameVersion), Loader=\(modLoader))")
         }
     } else {
-        // 主程序未响应，直接使用 CLI 本地完整创建（失败则报错，不再做占位）
-        if let localErr = localCreateFullInstance(instance: name, gameVersion: gameVersion, modLoader: modLoader) {
-            renderer.finish(success: false, message: "本地创建失败")
-            fail("实例创建失败：主程序无响应，本地创建失败：\(localErr)")
-            return
-        }
-        renderer.finish(success: true, message: "本地创建完成")
-        if jsonOutputEnabled {
-            printJSON([
-                "ok": true,
-                "instance": name,
-                "gameVersion": gameVersion,
-                "modLoader": modLoader,
-                "mode": "local-full",
-                "message": "已在 CLI 内完成创建与下载",
-            ])
-        } else {
-            success("已在 CLI 内完成实例创建: \(name) (MC=\(gameVersion), Loader=\(modLoader))")
-        }
+        renderer.finish(success: false, message: "创建失败")
+        fail("实例创建失败：本地暂不支持 \(modLoader)，且主程序未响应")
     }
 }
 
@@ -725,7 +712,7 @@ func accountCreate(args: [String]) {
             .appendingPathComponent("\(requestId).json", isDirectory: false).path
         let showProgress = !jsonOutputEnabled && isatty(STDOUT_FILENO) == 1
         let renderer = InstallProgressRenderer(enabled: showProgress)
-        renderer.start(title: "请求主程序发起 Microsoft 登录")
+        renderer.start(title: "请求主程序发起 Microsoft 登录（不会自动唤起）")
         requestMainAppCreateMicrosoftAccount(requestId: requestId, responseFile: responseFile)
         renderer.update(progress: 0.35, title: "请在主程序弹出的认证页面完成登录")
         let result = waitMainAppCreateMicrosoftAccountResult(
@@ -918,14 +905,8 @@ func installResource(
         do {
             if type == "modpack" {
                 ensureMainAppImportResponseObserver()
-                let cfg = loadConfig()
-                if cfg.autoOpenMainApp {
-                    renderer.update(progress: 0.06, title: "尝试唤起主程序")
-                    _ = openMainApp(emitMessage: !showProgress)
-                    usleep(700_000)
-                }
-                renderer.update(progress: 0.16, title: "请求主程序下载整合包")
-                let maxAttempts = cfg.autoOpenMainApp ? 3 : 1
+                renderer.update(progress: 0.16, title: "请求主程序下载整合包（不会自动唤起）")
+                let maxAttempts = 1
                 var importResult: (ok: Bool, message: String, gameName: String?) = (false, "导入失败", nil)
 
                 for attempt in 1...maxAttempts {
@@ -941,7 +922,7 @@ func installResource(
                         responseFile: responseFile
                     )
                     renderer.update(progress: 0.82, title: "等待主程序下载安装整合包")
-                    let timeout = (cfg.autoOpenMainApp && attempt < maxAttempts) ? 8.0 : 1800.0
+                    let timeout: TimeInterval = 1800.0
                     importResult = waitMainAppImportResult(requestId: requestId, responseFile: responseFile, timeout: timeout)
                     if importResult.ok {
                         break
@@ -1110,7 +1091,7 @@ func runResourceSearchTUI(
         let pageInfo = pagedBounds(total: hits.count, selectedIndex: selectedIndex, pageSize: pageSize)
         clearScreen()
         print(stylize("资源搜索结果（交互模式）", ANSI.bold + ANSI.cyan))
-        let targetText = type == "modpack" ? "主程序下载安装整合包" : "目标实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
+        let targetText = type == "modpack" ? "主程序下载安装整合包（不会自动唤起）" : "目标实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
         print(stylize("关键词=\(query) 类型=\(type) \(targetText)", ANSI.gray))
         print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
         print("")
@@ -1166,7 +1147,7 @@ func runResourceSearchTUI(
         clearScreen()
         print(stylize("安装对话框", ANSI.bold + ANSI.cyan))
         print(stylize("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出", ANSI.yellow))
-        let targetText = type == "modpack" ? "主程序下载安装整合包" : "实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
+        let targetText = type == "modpack" ? "主程序下载安装整合包（不会自动唤起）" : "实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
         print(stylize("项目=\(hit.title)  \(targetText)  类型=\(type)", ANSI.gray))
         if type != "modpack", !selectedInstance.isEmpty {
             let record = queryGameRecord(instance: selectedInstance)

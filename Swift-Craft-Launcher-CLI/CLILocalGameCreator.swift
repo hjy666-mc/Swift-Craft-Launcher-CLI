@@ -24,6 +24,14 @@ private struct ParsedVersionDetail {
     let javaComponent: String?
 }
 
+private struct LoaderProfileDetail {
+    struct Library { let name: String; let path: String; let url: URL; let sha1: String? }
+    let mainClass: String
+    let libraries: [Library]
+    let gameArgs: [String]
+    let jvmArgs: [String]
+}
+
 struct AssetIndexData: Decodable {
     struct AssetObject: Decodable {
         let hash: String
@@ -205,10 +213,76 @@ private func mavenPath(_ name: String) -> String {
     return "\(groupPath)/\(artifact)/\(version)/\(artifact)-\(version).jar"
 }
 
+private func parseLoaderProfile(_ data: Data) -> LoaderProfileDetail? {
+    guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+    let mainClass: String? = {
+        if let s = obj["mainClass"] as? String { return s }
+        if let dict = obj["mainClass"] as? [String: Any] {
+            return (dict["client"] as? String) ?? (dict["common"] as? String)
+        }
+        return nil
+    }()
+    guard let main = mainClass else { return nil }
+
+    let libsArray = (obj["libraries"] as? [[String: Any]]) ?? []
+    var libs: [LoaderProfileDetail.Library] = []
+    for lib in libsArray {
+        guard let name = lib["name"] as? String else { continue }
+        let urlBase = lib["url"] as? String ?? "https://maven.fabricmc.net/"
+        let path = mavenPath(name)
+        guard let url = URL(string: urlBase + path) else { continue }
+        let sha1 = lib["sha1"] as? String
+        libs.append(.init(name: name, path: path, url: url, sha1: sha1))
+    }
+
+    func extractArgs(_ key: String) -> [String] {
+        guard let dict = obj["arguments"] as? [String: Any], let raw = dict[key] else { return [] }
+        if let arr = raw as? [Any] {
+            return arr.compactMap { item in
+                if let s = item as? String { return s }
+                if let d = item as? [String: Any], let val = d["value"] as? String { return val }
+                return nil
+            }
+        }
+        return []
+    }
+    return .init(mainClass: main, libraries: libs, gameArgs: extractArgs("game"), jvmArgs: extractArgs("jvm"))
+}
+
+private func fetchFabricLoaderProfile(gameVersion: String) -> LoaderProfileDetail? {
+    guard let loaderList = runDownload(URL(string: "https://meta.fabricmc.net/v2/versions/loader/\(gameVersion)")!),
+          let loaderArr = try? JSONSerialization.jsonObject(with: loaderList) as? [[String: Any]],
+          let loader = loaderArr.first?["loader"] as? [String: Any],
+          let loaderVer = loader["version"] as? String,
+          let installerList = runDownload(URL(string: "https://meta.fabricmc.net/v2/versions/installer")!),
+          let installerArr = try? JSONSerialization.jsonObject(with: installerList) as? [[String: Any]],
+          let installerVer = installerArr.first?["version"] as? String
+    else { return nil }
+
+    let profileURL = URL(string: "https://meta.fabricmc.net/v2/versions/loader/\(gameVersion)/\(loaderVer)/\(installerVer)/profile/json")!
+    guard let profileData = runDownload(profileURL) else { return nil }
+    return parseLoaderProfile(profileData)
+}
+
+private func fetchQuiltLoaderProfile(gameVersion: String) -> LoaderProfileDetail? {
+    guard let loaderList = runDownload(URL(string: "https://meta.quiltmc.org/v3/versions/loader/\(gameVersion)")!),
+          let loaderArr = try? JSONSerialization.jsonObject(with: loaderList) as? [[String: Any]],
+          let loader = loaderArr.first?["loader"] as? [String: Any],
+          let loaderVer = loader["version"] as? String,
+          let installerList = runDownload(URL(string: "https://meta.quiltmc.org/v3/versions/installer")!),
+          let installerArr = try? JSONSerialization.jsonObject(with: installerList) as? [[String: Any]],
+          let installerVer = installerArr.first?["version"] as? String
+    else { return nil }
+
+    let profileURL = URL(string: "https://meta.quiltmc.org/v3/versions/loader/\(gameVersion)/\(loaderVer)/\(installerVer)/profile/json")!
+    guard let profileData = runDownload(profileURL) else { return nil }
+    return parseLoaderProfile(profileData)
+}
+
 func localCreateFullInstance(instance: String, gameVersion: String, modLoader: String) -> String? {
-    // 当前实现仅支持 vanilla 路径
-    if modLoader.lowercased() != "vanilla" {
-        return "当前 CLI 本地创建仅支持 vanilla，其他加载器请打开主程序创建。"
+    let loader = modLoader.lowercased()
+    if !["vanilla", "fabric", "quilt"].contains(loader) {
+        return "当前 CLI 本地创建仅支持 vanilla/fabric/quilt"
     }
 
     let config = loadConfig()
@@ -257,8 +331,41 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
         return "下载客户端失败: \(err)"
     }
 
-    // 5) 下载 libraries (仅 artifact)
-    for lib in detail.libraries {
+    // 5) 下载 libraries (基础 + loader)
+    var extraLibraries: [LoaderProfileDetail.Library] = []
+    var loaderMainClass: String? = nil
+    var loaderGameArgs: [String] = []
+    var loaderJvmArgs: [String] = []
+    if loader == "fabric" {
+        guard let profile = fetchFabricLoaderProfile(gameVersion: gameVersion) else {
+            return "获取 Fabric 加载器信息失败"
+        }
+        extraLibraries = profile.libraries
+        loaderMainClass = profile.mainClass
+        loaderGameArgs = profile.gameArgs
+        loaderJvmArgs = profile.jvmArgs
+    } else if loader == "quilt" {
+        guard let profile = fetchQuiltLoaderProfile(gameVersion: gameVersion) else {
+            return "获取 Quilt 加载器信息失败"
+        }
+        extraLibraries = profile.libraries
+        loaderMainClass = profile.mainClass
+        loaderGameArgs = profile.gameArgs
+        loaderJvmArgs = profile.jvmArgs
+    }
+
+    var allLibraries: [ParsedVersionDetail.Library] = detail.libraries
+    for lib in extraLibraries {
+        allLibraries.append(.init(name: lib.name, path: lib.path, url: lib.url, sha1: lib.sha1))
+    }
+    var seen: Set<String> = []
+    allLibraries = allLibraries.filter { lib in
+        if seen.contains(lib.path) { return false }
+        seen.insert(lib.path)
+        return true
+    }
+
+    for lib in allLibraries {
         let dest = metaDir.appendingPathComponent(lib.path)
         if let err = downloadToFile(url: lib.url, dest: dest, expectedSha1: lib.sha1) {
             return "下载依赖失败 \(lib.name): \(err)"
@@ -285,7 +392,7 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
     }
 
     // 7) 构建 classpath
-    let libs = detail.libraries.compactMap { lib -> String? in
+    let libs = allLibraries.compactMap { lib -> String? in
         let full = metaDir.appendingPathComponent(lib.path).path
         return fm.fileExists(atPath: full) ? full : nil
     }
@@ -295,9 +402,15 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
     let xmx = parseMemoryToMB(loadConfig().memory)
     var jvmArgs = ["-XstartOnFirstThread", "-Xms\(xmx)M", "-Xmx\(xmx)M", "-cp", classpath]
     var gameArgs: [String] = []
-    jvmArgs.append(contentsOf: detail.jvmArgs)
-    gameArgs.append(contentsOf: detail.gameArgs)
-    let command = jvmArgs + [detail.mainClass] + gameArgs
+    if loader == "vanilla" {
+        jvmArgs.append(contentsOf: detail.jvmArgs)
+        gameArgs.append(contentsOf: detail.gameArgs)
+    } else {
+        jvmArgs.append(contentsOf: loaderJvmArgs)
+        gameArgs.append(contentsOf: loaderGameArgs)
+    }
+    let mainClass = loaderMainClass ?? detail.mainClass
+    let command = jvmArgs + [mainClass] + gameArgs
 
     // 9) 写入 data.db
     let payload: [String: Any] = [
@@ -317,7 +430,7 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
         "xms": xmx,
         "xmx": xmx,
         "javaVersion": (detail.javaComponent).flatMap(Int.init) ?? 8,
-        "mainClass": detail.mainClass,
+        "mainClass": mainClass,
         "gameArguments": gameArgs,
         "environmentVariables": "",
     ]
