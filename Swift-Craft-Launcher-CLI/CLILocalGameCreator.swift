@@ -483,7 +483,7 @@ private func executeProcessors(
         } else {
             procProcess.arguments = ["-jar", jarPath] + args
         }
-        procProcess.currentDirectoryURL = gameDir
+        procProcess.currentDirectoryURL = metaDir.deletingLastPathComponent()
         do {
             try procProcess.run()
             procProcess.waitUntilExit()
