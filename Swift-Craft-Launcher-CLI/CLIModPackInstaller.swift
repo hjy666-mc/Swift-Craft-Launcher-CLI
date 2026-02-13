@@ -579,7 +579,7 @@ private func installModPackDependencies(
     modLoader: String,
     profileDir: URL
 ) async -> Bool {
-    let required = deps.filter { $0.dependencyType == "required" }
+    let required = deps.filter { $0.dependencyType == "required" || $0.dependencyType == "embedded" }
     if required.isEmpty { return true }
     for dep in required {
         if let projectId = dep.projectId, projectId.hasPrefix("cf-") {
