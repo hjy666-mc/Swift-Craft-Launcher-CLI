@@ -158,50 +158,75 @@ func installModrinthModpack(
                 result = "未找到匹配版本"
                 return
             }
-            let mrpackFile = selected.files.first(where: { ($0.file_type ?? "").lowercased() == "modpack" })
-                ?? selected.files.first(where: { $0.primary == true })
-                ?? selected.files.first(where: { $0.filename.lowercased().hasSuffix(".mrpack") })
-                ?? selected.files.first
-            guard let mrpackFile,
-                  let downloadURL = URL(string: mrpackFile.url) else {
+            let mrpackCandidates = selected.files.filter { $0.filename.lowercased().hasSuffix(".mrpack") }
+            let mrpackPreferred = mrpackCandidates.first(where: { $0.primary == true }) ?? mrpackCandidates.first
+            let modpackTypeFile = selected.files.first(where: { ($0.file_type ?? "").lowercased() == "modpack" })
+            let primaryFile = selected.files.first(where: { $0.primary == true })
+            let fallbackFile = selected.files.first
+            let orderedFiles = [mrpackPreferred, modpackTypeFile, primaryFile, fallbackFile]
+                .compactMap { $0 }
+                .reduce(into: [ModrinthFile]()) { acc, item in
+                    if !acc.contains(where: { $0.url == item.url }) { acc.append(item) }
+                }
+            guard let _ = orderedFiles.first else {
                 result = "未找到可下载的整合包文件"
                 return
             }
 
             let fm = FileManager.default
-            let tmpDir = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-            try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-            let (tmpFile, _) = try await URLSession.shared.download(from: downloadURL)
-            let mrpackPath = tmpDir.appendingPathComponent(mrpackFile.filename)
-            try? fm.removeItem(at: mrpackPath)
-            try fm.moveItem(at: tmpFile, to: mrpackPath)
-
-            // unzip
-            let unzip = Process()
-            unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-            unzip.arguments = ["-qq", mrpackPath.path, "-d", tmpDir.path]
-            try unzip.run()
-            unzip.waitUntilExit()
-            guard unzip.terminationStatus == 0 else {
-                result = "解压整合包失败"
-                return
+            func downloadAndUnzip(_ file: ModrinthFile, into dir: URL) async throws {
+                guard let url = URL(string: file.url) else { throw NSError(domain: "modpack", code: -1) }
+                let (tmpFile, _) = try await URLSession.shared.download(from: url)
+                let packPath = dir.appendingPathComponent(file.filename)
+                try? fm.removeItem(at: packPath)
+                try fm.moveItem(at: tmpFile, to: packPath)
+                let unzip = Process()
+                unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+                unzip.arguments = ["-qq", packPath.path, "-d", dir.path]
+                try unzip.run()
+                unzip.waitUntilExit()
+                if unzip.terminationStatus != 0 {
+                    throw NSError(domain: "modpack", code: -2)
+                }
             }
 
-            let indexURL = findFileURL(named: "modrinth.index.json", under: tmpDir)
-            let manifestURL = findFileURL(named: "manifest.json", under: tmpDir)
+            var tmpDir: URL? = nil
+            var indexURL: URL? = nil
+            var manifestURL: URL? = nil
+            var firstTmpDir: URL? = nil
+            for (idx, file) in orderedFiles.enumerated() {
+                let dir = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+                try fm.createDirectory(at: dir, withIntermediateDirectories: true)
+                do {
+                    try await downloadAndUnzip(file, into: dir)
+                } catch {
+                    if idx == 0 { firstTmpDir = dir }
+                    continue
+                }
+                if firstTmpDir == nil { firstTmpDir = dir }
+                let maybeIndex = findFileURL(named: "modrinth.index.json", under: dir)
+                let maybeManifest = findFileURL(named: "manifest.json", under: dir)
+                if maybeIndex != nil || maybeManifest != nil {
+                    tmpDir = dir
+                    indexURL = maybeIndex
+                    manifestURL = maybeManifest
+                    break
+                }
+            }
+            let workingDir = tmpDir ?? firstTmpDir ?? fm.temporaryDirectory
             if indexURL == nil && manifestURL == nil {
                 if let fallbackResult = try await installOverridesOnly(
                     selectedVersion: selected,
                     projectId: projectId,
                     preferredName: preferredName,
-                    tmpDir: tmpDir
+                    tmpDir: workingDir
                 ) {
                     result = fallbackResult
                     return
                 }
                 result = writeFailureDiagnostics(
                     reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式）",
-                    tmpDir: tmpDir
+                    tmpDir: workingDir
                 )
                 return
             }
@@ -234,7 +259,7 @@ func installModrinthModpack(
                 }
 
                 let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
-                let overridesDir = tmpDir.appendingPathComponent(index.overrides ?? "overrides", isDirectory: true)
+                let overridesDir = workingDir.appendingPathComponent(index.overrides ?? "overrides", isDirectory: true)
                 copyOverrides(from: overridesDir, to: profileDir)
 
                 let indexInfo = ModrinthIndexInfo(
@@ -307,14 +332,14 @@ func installModrinthModpack(
                 selectedVersion: selected,
                 projectId: projectId,
                 preferredName: preferredName,
-                tmpDir: tmpDir
+                tmpDir: workingDir
             ) {
                 result = fallbackResult
                 return
             }
             result = writeFailureDiagnostics(
                 reason: "索引文件解析失败（可能格式不支持）",
-                tmpDir: tmpDir
+                tmpDir: workingDir
             )
         } catch {
             result = "安装失败: \(error.localizedDescription)"
