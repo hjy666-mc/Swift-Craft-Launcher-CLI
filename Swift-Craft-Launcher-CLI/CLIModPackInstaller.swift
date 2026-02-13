@@ -574,10 +574,19 @@ private func installFromVersionDependenciesOnly(
     tmpDir: URL
 ) async throws -> String? {
     var deps = buildDependencies(from: selectedVersion.dependencies)
-    if deps.isEmpty, let refreshed = await fetchModrinthVersion(id: selectedVersion.id) {
-        deps = buildDependencies(from: refreshed.dependencies)
+    var fetchErr: String? = nil
+    if deps.isEmpty {
+        let res = await fetchModrinthVersionWithStatus(id: selectedVersion.id)
+        fetchErr = res.error
+        if let refreshed = res.version {
+            deps = buildDependencies(from: refreshed.dependencies)
+        }
     }
-    if deps.isEmpty { return nil }
+    if deps.isEmpty {
+        let reason = "版本依赖为空（无法安装）。依赖数量=0，fetchError=\(fetchErr ?? "nil")"
+        _ = writeFailureDiagnostics(reason: reason, tmpDir: tmpDir)
+        return nil
+    }
     let gameVersion = selectedVersion.game_versions?.first ?? ""
     let loaders = selectedVersion.loaders ?? []
     let modLoader: String = {
@@ -627,20 +636,27 @@ private func targetDir(for projectType: String?, profileDir: URL) -> URL {
 }
 
 private func fetchModrinthVersion(id: String) async -> ModrinthVersion? {
+    return await fetchModrinthVersionWithStatus(id: id).version
+}
+
+private func fetchModrinthVersionWithStatus(id: String) async -> (version: ModrinthVersion?, error: String?) {
     let sem = DispatchSemaphore(value: 0)
     var version: ModrinthVersion?
+    var err: String?
     Task {
         defer { sem.signal() }
         do {
             let url = URL(string: "https://api.modrinth.com/v2/version/\(id)")!
             let data = try await fetchModrinthData(from: url)
             version = try JSONDecoder().decode(ModrinthVersion.self, from: data)
+            err = nil
         } catch {
             version = nil
+            err = error.localizedDescription
         }
     }
     sem.wait()
-    return version
+    return (version, err)
 }
 
 private func fetchModrinthProjectDetail(id: String) async -> ModrinthProjectDetail? {
