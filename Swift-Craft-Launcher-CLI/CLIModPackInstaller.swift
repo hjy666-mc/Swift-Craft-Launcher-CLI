@@ -152,7 +152,7 @@ func installModrinthModpack(
         defer { sem.signal() }
         do {
             let versionsURL = URL(string: "https://api.modrinth.com/v2/project/\(projectId)/version")!
-            let (data, _) = try await URLSession.shared.data(from: versionsURL)
+            let data = try await fetchModrinthData(from: versionsURL)
             let versions = try JSONDecoder().decode([ModrinthVersion].self, from: data)
             guard let selectedBrief = versions.first(where: { version == nil || $0.id == version || $0.version_number == version }) else {
                 result = "未找到匹配版本"
@@ -630,7 +630,7 @@ private func fetchModrinthVersion(id: String) async -> ModrinthVersion? {
         defer { sem.signal() }
         do {
             let url = URL(string: "https://api.modrinth.com/v2/version/\(id)")!
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let data = try await fetchModrinthData(from: url)
             version = try JSONDecoder().decode(ModrinthVersion.self, from: data)
         } catch {
             version = nil
@@ -647,7 +647,7 @@ private func fetchModrinthProjectDetail(id: String) async -> ModrinthProjectDeta
         defer { sem.signal() }
         do {
             let url = URL(string: "https://api.modrinth.com/v2/project/\(id)")!
-            let (data, _) = try await URLSession.shared.data(from: url)
+            let data = try await fetchModrinthData(from: url)
             detail = try JSONDecoder().decode(ModrinthProjectDetail.self, from: data)
         } catch {
             detail = nil
@@ -655,6 +655,13 @@ private func fetchModrinthProjectDetail(id: String) async -> ModrinthProjectDeta
     }
     sem.wait()
     return detail
+}
+
+private func fetchModrinthData(from url: URL) async throws -> Data {
+    var req = URLRequest(url: url)
+    req.setValue("Swift-Craft-Launcher-CLI", forHTTPHeaderField: "User-Agent")
+    let (data, _) = try await URLSession.shared.data(for: req)
+    return data
 }
 
 private func downloadPrimaryFile(from version: ModrinthVersion, to destDir: URL) async -> Bool {
