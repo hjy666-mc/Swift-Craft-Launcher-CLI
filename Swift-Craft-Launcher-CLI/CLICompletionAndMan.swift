@@ -44,7 +44,7 @@ private func installZshCompletion() {
     let fm = FileManager.default
     let home = fm.homeDirectoryForCurrentUser
     let dir = home.appendingPathComponent(".zsh/completions", isDirectory: true)
-    let scriptPath = dir.appendingPathComponent("_scl")
+    let scriptPath = dir.appendingPathComponent("_scl_cli")
     do {
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         try zshCompletionScript().write(to: scriptPath, atomically: true, encoding: .utf8)
@@ -55,7 +55,7 @@ private func installZshCompletion() {
 
     let rcPath = home.appendingPathComponent(".zshrc")
     let marker = "# scl completion"
-    let block = "\n\(marker)\n# ensure our completion dir is first in fpath\nfpath=(\"$HOME/.zsh/completions\" ${fpath:#\"$HOME/.zsh/completions\"})\nautoload -Uz compinit && compinit -u\nunfunction _scl 2>/dev/null\nautoload -Uz _scl && compdef _scl scl\nzstyle ':completion:*' menu select\nbindkey '^I' menu-complete\n"
+    let block = "\n\(marker)\n# ensure our completion dir is first in fpath\nfpath=(\"$HOME/.zsh/completions\" ${fpath:#\"$HOME/.zsh/completions\"})\nautoload -Uz compinit && compinit -u\nautoload -Uz _scl_cli && compdef _scl_cli scl\nzstyle ':completion:*' menu select\nbindkey '^I' menu-complete\n"
     appendBlockIfMissing(fileURL: rcPath, marker: marker, block: block)
     success("已安装 zsh 补全: \(scriptPath.path)\n请新开终端或执行: source ~/.zshrc")
 }
@@ -333,7 +333,7 @@ func zshCompletionScript() -> String {
     """
     #compdef scl
 
-    _scl() {
+    _scl_cli() {
       local context state line
       typeset -A opt_args
 
@@ -397,7 +397,7 @@ func zshCompletionScript() -> String {
       esac
     }
 
-    _scl "$@"
+    _scl_cli "$@"
     """
 }
 
