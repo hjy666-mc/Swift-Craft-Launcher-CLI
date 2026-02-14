@@ -96,7 +96,6 @@ private func installFishCompletion() {
 }
 
 private func appendBlockIfMissing(fileURL: URL, marker: String, block: String) {
-    let fm = FileManager.default
     let existing = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
     if let range = existing.range(of: marker) {
         let prefix = String(existing[..<range.lowerBound])

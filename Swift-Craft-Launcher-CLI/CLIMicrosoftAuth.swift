@@ -1,6 +1,6 @@
 import Foundation
 
-enum CLIAuthError: Error, CustomStringConvertible {
+enum CLIAuthError: Error, CustomStringConvertible, LocalizedError {
     case message(String)
 
     var description: String {
@@ -8,6 +8,10 @@ enum CLIAuthError: Error, CustomStringConvertible {
         case .message(let text):
             return text
         }
+    }
+
+    var errorDescription: String? {
+        return description
     }
 }
 
@@ -250,7 +254,7 @@ enum CLIMicrosoftAuth {
     static func loginDeviceCode(progress: ((String) -> Void)? = nil) async throws -> (MinecraftProfileResponse, AuthCredential) {
         let clientId = CLIAppConstants.minecraftClientId
         guard !clientId.isEmpty, !clientId.contains("$(") else {
-            throw CLIAuthError.message("缺少 Microsoft Client ID，请设置环境变量 SCL_CLIENT_ID")
+            throw CLIAuthError.message("缺少 Microsoft Client ID。请用 `export SCL_CLIENT_ID=...` 或 `SCL_CLIENT_ID=... scl account create -microsoft`")
         }
 
         let device = try await requestDeviceCode(clientId: clientId)

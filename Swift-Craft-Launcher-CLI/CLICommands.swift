@@ -763,7 +763,11 @@ func accountCreate(args: [String]) {
             success("已创建正版账号: \(name)")
         case .failure(let error):
             renderer.finish(success: false, message: "Microsoft 登录失败")
-            fail(error.localizedDescription)
+            if let cliError = error as? CLIAuthError {
+                fail(cliError.description)
+            } else {
+                fail(error.localizedDescription)
+            }
         case .none:
             renderer.finish(success: false, message: "Microsoft 登录失败")
             fail("Microsoft 登录失败")

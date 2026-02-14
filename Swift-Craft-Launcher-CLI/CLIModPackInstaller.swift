@@ -487,7 +487,7 @@ private func writeDebugLog(_ line: String) {
         let entry = "[\(ISO8601DateFormatter().string(from: Date()))] \(line)\n"
         if fm.fileExists(atPath: file.path) {
             if let handle = try? FileHandle(forWritingTo: file) {
-                try? handle.seekToEnd()
+                _ = try? handle.seekToEnd()
                 if let data = entry.data(using: .utf8) {
                     try? handle.write(contentsOf: data)
                 }
@@ -742,40 +742,24 @@ private func fetchModrinthVersion(id: String) async -> ModrinthVersion? {
 }
 
 private func fetchModrinthVersionWithStatus(id: String) async -> (version: ModrinthVersion?, error: String?) {
-    let sem = DispatchSemaphore(value: 0)
-    var version: ModrinthVersion?
-    var err: String?
-    Task {
-        defer { sem.signal() }
-        do {
-            let url = URL(string: "https://api.modrinth.com/v2/version/\(id)")!
-            let data = try await fetchModrinthData(from: url)
-            version = try JSONDecoder().decode(ModrinthVersion.self, from: data)
-            err = nil
-        } catch {
-            version = nil
-            err = error.localizedDescription
-        }
+    do {
+        let url = URL(string: "https://api.modrinth.com/v2/version/\(id)")!
+        let data = try await fetchModrinthData(from: url)
+        let version = try JSONDecoder().decode(ModrinthVersion.self, from: data)
+        return (version, nil)
+    } catch {
+        return (nil, error.localizedDescription)
     }
-    sem.wait()
-    return (version, err)
 }
 
 private func fetchModrinthProjectDetail(id: String) async -> ModrinthProjectDetail? {
-    let sem = DispatchSemaphore(value: 0)
-    var detail: ModrinthProjectDetail?
-    Task {
-        defer { sem.signal() }
-        do {
-            let url = URL(string: "https://api.modrinth.com/v2/project/\(id)")!
-            let data = try await fetchModrinthData(from: url)
-            detail = try JSONDecoder().decode(ModrinthProjectDetail.self, from: data)
-        } catch {
-            detail = nil
-        }
+    do {
+        let url = URL(string: "https://api.modrinth.com/v2/project/\(id)")!
+        let data = try await fetchModrinthData(from: url)
+        return try JSONDecoder().decode(ModrinthProjectDetail.self, from: data)
+    } catch {
+        return nil
     }
-    sem.wait()
-    return detail
 }
 
 private func fetchModrinthData(from url: URL) async throws -> Data {
