@@ -47,7 +47,13 @@ enum CLIObfuscator {
     }
 
     static func decryptClientID(_ encryptedString: String) -> String {
+        if encryptedString.isEmpty || encryptedString.contains("$(") {
+            return ""
+        }
         let partLength = 8
+        guard encryptedString.count >= partLength * 6 else {
+            return ""
+        }
         var parts: [String] = []
         for i in 0..<6 {
             let startIndex = encryptedString.index(encryptedString.startIndex, offsetBy: i * partLength)
