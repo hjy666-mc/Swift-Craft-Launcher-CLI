@@ -331,13 +331,30 @@ func gameLaunch(args: [String]) {
     let account = valueOf("--account", in: args)
         ?? (config.defaultAccount.isEmpty ? accountStore.current : config.defaultAccount)
     let authName = account.isEmpty ? "Player" : account
+    var authUUID = "00000000-0000-0000-0000-000000000000"
+    var authToken = "offline-token"
+    var authXuid = "0"
+    if let profile = profileForAccountName(authName),
+       let credential = loadAuthCredential(userId: profile.id) {
+        switch refreshCredentialSync(credential) {
+        case .success(let refreshed):
+            if refreshed != credential {
+                upsertAuthCredential(refreshed)
+            }
+            authUUID = profile.id
+            authToken = refreshed.accessToken
+            authXuid = refreshed.xuid
+        case .failure(let error):
+            warn("正版账号 Token 刷新失败，使用离线模式启动: \(error)")
+        }
+    }
     let memoryMB = parseMemoryToMB(valueOf("--memory", in: args) ?? config.memory)
 
     command = command.map {
         $0.replacingOccurrences(of: "${auth_player_name}", with: authName)
-            .replacingOccurrences(of: "${auth_uuid}", with: "00000000-0000-0000-0000-000000000000")
-            .replacingOccurrences(of: "${auth_access_token}", with: "offline-token")
-            .replacingOccurrences(of: "${auth_xuid}", with: "0")
+            .replacingOccurrences(of: "${auth_uuid}", with: authUUID)
+            .replacingOccurrences(of: "${auth_access_token}", with: authToken)
+            .replacingOccurrences(of: "${auth_xuid}", with: authXuid)
             .replacingOccurrences(of: "${xms}", with: String(memoryMB))
             .replacingOccurrences(of: "${xmx}", with: String(memoryMB))
     }
@@ -683,33 +700,73 @@ func handleAccount(args: [String]) {
 
 func accountCreate(args: [String]) {
     if args.contains("-microsoft") {
-        let requestId = UUID().uuidString
-        let responseFile = fm.temporaryDirectory
-            .appendingPathComponent("swiftcraftlauncher_account_response", isDirectory: true)
-            .appendingPathComponent("\(requestId).json", isDirectory: false).path
         let showProgress = !jsonOutputEnabled && isatty(STDOUT_FILENO) == 1
         let renderer = InstallProgressRenderer(enabled: showProgress)
-        renderer.start(title: "请求主程序发起 Microsoft 登录（不会自动唤起）")
-        requestMainAppCreateMicrosoftAccount(requestId: requestId, responseFile: responseFile)
-        renderer.update(progress: 0.35, title: "请在主程序弹出的认证页面完成登录")
-        let result = waitMainAppCreateMicrosoftAccountResult(
-            requestId: requestId,
-            responseFile: responseFile,
-            timeout: 900
-        ) { elapsed in
-            let p = min(0.95, 0.35 + (elapsed / 90.0) * 0.55)
+        renderer.start(title: "开始 Microsoft 登录")
+        let semaphore = DispatchSemaphore(value: 0)
+        var authResult: Result<(MinecraftProfileResponse, AuthCredential), Error>?
+        Task {
+            do {
+                let result = try await CLIMicrosoftAuth.loginDeviceCode { message in
+                    if !message.isEmpty {
+                        info(message)
+                    }
+                }
+                authResult = .success(result)
+            } catch {
+                authResult = .failure(error)
+            }
+            semaphore.signal()
+        }
+        var elapsed: TimeInterval = 0
+        while semaphore.wait(timeout: .now() + 1) == .timedOut {
+            elapsed += 1
+            let p = min(0.95, 0.1 + (elapsed / 60.0) * 0.85)
             renderer.update(progress: p, title: "等待 Microsoft 认证完成")
         }
-        if result.ok {
-            renderer.finish(success: true, message: "Microsoft 账号添加成功")
-            if let name = result.name, !name.isEmpty {
-                success("已创建正版账号: \(name)")
-            } else {
-                success("已创建正版账号")
+
+        switch authResult {
+        case .success(let (profile, credential)):
+            let name = profile.name
+            var store = loadAccounts()
+            if !store.players.contains(name) {
+                store.players.append(name)
             }
-        } else {
+            if store.current.isEmpty { store.current = name }
+            saveAccounts(store)
+
+            var profiles = loadUserProfilesFromAppDefaults()
+            let avatar = profile.skins.first?.url
+            let isCurrent = profiles.first(where: { $0.isCurrent }) == nil
+            if let idx = profiles.firstIndex(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
+                profiles[idx] = StoredUserProfile(
+                    id: profile.id,
+                    name: name,
+                    avatar: avatar,
+                    lastPlayed: Date(),
+                    isCurrent: profiles[idx].isCurrent
+                )
+            } else {
+                profiles.append(
+                    StoredUserProfile(
+                        id: profile.id,
+                        name: name,
+                        avatar: avatar,
+                        lastPlayed: Date(),
+                        isCurrent: isCurrent
+                    )
+                )
+            }
+            saveUserProfilesToAppDefaults(profiles)
+            upsertAuthCredential(credential)
+            renderer.finish(success: true, message: "Microsoft 账号添加成功")
+            success("已创建正版账号: \(name)")
+        case .failure(let error):
             renderer.finish(success: false, message: "Microsoft 登录失败")
-            fail(result.message)
+            fail(error.localizedDescription)
+        case .none:
+            renderer.finish(success: false, message: "Microsoft 登录失败")
+            fail("Microsoft 登录失败")
         }
         return
     }
@@ -761,6 +818,9 @@ func accountDelete(args: [String]) {
     saveAccounts(store)
 
     var profiles = loadUserProfilesFromAppDefaults()
+    if let profile = profiles.first(where: { $0.name == name }) {
+        removeAuthCredential(userId: profile.id)
+    }
     let deletingCurrent = profiles.contains { $0.name == name && $0.isCurrent }
     profiles.removeAll { $0.name == name }
     if deletingCurrent, !profiles.isEmpty {
@@ -834,11 +894,21 @@ func accountShow(args: [String]) {
         return
     }
 
+    let profile = profileForAccountName(name)
+    let credential = profile.flatMap { loadAuthCredential(userId: $0.id) }
+    let typeText = accountTypeText(avatar: profile?.avatar)
+    let tokenState: String
+    if let cred = credential {
+        tokenState = JWTDecoder.isTokenExpiringSoon(cred.accessToken) ? "expired" : "valid"
+    } else {
+        tokenState = "n/a"
+    }
     printTable(
         headers: ["KEY", "VALUE"],
         rows: [
             ["name", name],
-            ["type", "offline"],
+            ["type", typeText],
+            ["token", tokenState],
             ["isCurrent", store.current == name ? "true" : "false"],
         ]
     )

@@ -186,6 +186,9 @@ let configURL: URL = {
 let accountURL: URL = {
     configURL.deletingLastPathComponent().appendingPathComponent("accounts.json")
 }()
+let credentialURL: URL = {
+    configURL.deletingLastPathComponent().appendingPathComponent("auth_credentials.json")
+}()
 
 let processStateURL: URL = {
     configURL.deletingLastPathComponent().appendingPathComponent("processes.json")
@@ -1002,6 +1005,63 @@ func saveUserProfilesToAppDefaults(_ profiles: [StoredUserProfile]) {
 func accountTypeText(avatar: String?) -> String {
     let text = (avatar ?? "").lowercased()
     return (text.hasPrefix("http://") || text.hasPrefix("https://")) ? "online" : "offline"
+}
+
+func loadAuthCredentials() -> [AuthCredential] {
+    if fm.fileExists(atPath: credentialURL.path),
+       let data = try? Data(contentsOf: credentialURL),
+       let creds = try? JSONDecoder().decode([AuthCredential].self, from: data) {
+        return creds
+    }
+    return []
+}
+
+func saveAuthCredentials(_ creds: [AuthCredential]) {
+    try? fm.createDirectory(at: credentialURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+    if let data = try? JSONEncoder().encode(creds) {
+        try? data.write(to: credentialURL, options: .atomic)
+    }
+}
+
+func upsertAuthCredential(_ credential: AuthCredential) {
+    var creds = loadAuthCredentials()
+    if let idx = creds.firstIndex(where: { $0.userId == credential.userId }) {
+        creds[idx] = credential
+    } else {
+        creds.append(credential)
+    }
+    saveAuthCredentials(creds)
+}
+
+func removeAuthCredential(userId: String) {
+    var creds = loadAuthCredentials()
+    creds.removeAll { $0.userId == userId }
+    saveAuthCredentials(creds)
+}
+
+func loadAuthCredential(userId: String) -> AuthCredential? {
+    return loadAuthCredentials().first { $0.userId == userId }
+}
+
+func profileForAccountName(_ name: String) -> StoredUserProfile? {
+    let profiles = loadUserProfilesFromAppDefaults()
+    return profiles.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+}
+
+func refreshCredentialSync(_ credential: AuthCredential) -> Result<AuthCredential, Error> {
+    let semaphore = DispatchSemaphore(value: 0)
+    var result: Result<AuthCredential, Error> = .failure(CLIAuthError.message("未知错误"))
+    Task {
+        do {
+            let refreshed = try await CLIMicrosoftAuth.refreshIfNeeded(credential)
+            result = .success(refreshed)
+        } catch {
+            result = .failure(error)
+        }
+        semaphore.signal()
+    }
+    semaphore.wait()
+    return result
 }
 
 func mergeConfigWithAppDefaults(_ config: CLIConfig) -> CLIConfig {

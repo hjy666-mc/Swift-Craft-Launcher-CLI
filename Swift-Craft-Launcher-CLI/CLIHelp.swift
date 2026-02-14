@@ -182,7 +182,7 @@ func printAccountHelp() {
   示例: scl account create demoUser -offline
 
 \(stylize("scl account create -microsoft", ANSI.bold + ANSI.blue))
-  调用主程序发起 Microsoft 认证并添加正版账号
+  设备码登录 Microsoft 并添加正版账号（会打开浏览器）
 
 \(stylize("scl account delete <name>", ANSI.bold + ANSI.blue))
   删除账号
