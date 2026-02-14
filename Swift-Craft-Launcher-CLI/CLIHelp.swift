@@ -34,6 +34,8 @@ func printGlobalHelp() {
   resources  资源搜索/安装/管理
   completion 生成补全脚本（zsh/bash/fish）
   man        查看/安装 man 手册
+  open       打开主程序
+  uninstall  卸载 CLI / 主程序
 
 \(stylize("快速示例", ANSI.bold + ANSI.blue))
   scl get --all
@@ -50,6 +52,7 @@ func printGlobalHelp() {
   scl resources --help
   scl completion --help
   scl man --help
+  scl uninstall --help
 """)
 }
 
@@ -314,5 +317,28 @@ func printGetHelp() {
 
 \(stylize("scl get --all", ANSI.bold + ANSI.blue))
   默认输出本体 AppStorage 全部配置项（21项）
+""")
+}
+
+func printUninstallHelp() {
+    if jsonOutputEnabled {
+        printJSON([
+            "ok": true,
+            "type": "help",
+            "topic": "uninstall"
+        ])
+        return
+    }
+    print("""
+\(stylize("UNINSTALL 命令", ANSI.bold + ANSI.cyan))
+
+\(stylize("scl uninstall cli", ANSI.bold + ANSI.blue))
+  卸载 CLI 二进制与补全脚本
+
+\(stylize("scl uninstall app", ANSI.bold + ANSI.blue))
+  卸载 Swift Craft Launcher.app
+
+\(stylize("scl uninstall scl", ANSI.bold + ANSI.blue))
+  同时卸载 CLI 与主程序
 """)
 }

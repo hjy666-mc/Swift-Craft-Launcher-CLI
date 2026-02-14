@@ -25,11 +25,17 @@ enum CompletionShell: String, ExpressibleByArgument {
     case fish
 }
 
+enum UninstallTarget: String, ExpressibleByArgument {
+    case cli
+    case app
+    case scl
+}
+
 struct SCL: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scl",
         abstract: "Swift Craft Launcher CLI",
-        subcommands: [SetCommand.self, GetCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self, ShellCommand.self]
+        subcommands: [SetCommand.self, GetCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self, OpenCommand.self, UninstallCommand.self, ShellCommand.self]
     )
     @OptionGroup var global: GlobalOptions
 }
@@ -387,6 +393,31 @@ struct ManCommand: ParsableCommand {
     }
 }
 
+struct OpenCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "open", abstract: "打开主程序")
+    @OptionGroup var global: GlobalOptions
+
+    mutating func run() throws {
+        applyGlobal(global)
+        _ = openMainApp()
+    }
+}
+
+struct UninstallCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "uninstall", abstract: "卸载组件")
+    @OptionGroup var global: GlobalOptions
+    @Argument var target: UninstallTarget?
+
+    mutating func run() throws {
+        applyGlobal(global)
+        guard let target else {
+            printUninstallHelp()
+            return
+        }
+        uninstall(target: target)
+    }
+}
+
 private let sclShellBanner = """
  ____    ____     __                   __              ___    ___
 /\\  _`\\ /\\  _`\\  /\\ \\                 /\\ \\            /\\_ \\  /\\_ \\
@@ -464,6 +495,10 @@ private func runShellCommand(_ line: String) {
         handleCompletion(args: args)
     case "man":
         handleMan(args: args)
+    case "open":
+        _ = openMainApp()
+    case "uninstall":
+        handleUninstall(args: args)
     case "help":
         printGlobalHelp()
     case "clear":

@@ -1628,3 +1628,132 @@ func resourcesRemove(args: [String]) {
         fail("删除失败: \(error.localizedDescription)")
     }
 }
+
+func handleUninstall(args: [String]) {
+    if args.isEmpty || args.contains("--help") || args.contains("-h") {
+        printUninstallHelp()
+        return
+    }
+    let targetValue = args[0].lowercased()
+    guard let target = UninstallTarget(rawValue: targetValue) else {
+        fail("未知卸载目标: \(args[0])")
+        printUninstallHelp()
+        return
+    }
+    uninstall(target: target)
+}
+
+func uninstall(target: UninstallTarget) {
+    var removed: [String] = []
+    var skipped: [String] = []
+
+    switch target {
+    case .cli:
+        uninstallCLI(removed: &removed, skipped: &skipped)
+    case .app:
+        uninstallApp(removed: &removed, skipped: &skipped)
+    case .scl:
+        uninstallCLI(removed: &removed, skipped: &skipped)
+        uninstallApp(removed: &removed, skipped: &skipped)
+    }
+
+    if removed.isEmpty && skipped.isEmpty {
+        warn("未找到可卸载的内容")
+        return
+    }
+    if !removed.isEmpty {
+        success("已移除: \(removed.joined(separator: ", "))")
+    }
+    if !skipped.isEmpty {
+        warn("未找到: \(skipped.joined(separator: ", "))")
+    }
+}
+
+private func uninstallCLI(removed: inout [String], skipped: inout [String]) {
+    let home = fm.homeDirectoryForCurrentUser
+    let candidates: [URL] = [
+        home.appendingPathComponent(".local/bin/scl"),
+        URL(fileURLWithPath: "/usr/local/bin/scl")
+    ]
+    for url in candidates {
+        if removeFileIfExists(url) {
+            removed.append(url.path)
+        } else {
+            skipped.append(url.path)
+        }
+    }
+
+    let completionFiles: [URL] = [
+        home.appendingPathComponent(".zsh/completions/_scl_cli"),
+        home.appendingPathComponent(".zsh/completions/_scl"),
+        home.appendingPathComponent(".bash_completion.d/scl"),
+        home.appendingPathComponent(".config/fish/completions/scl.fish")
+    ]
+    for url in completionFiles {
+        if removeFileIfExists(url) {
+            removed.append(url.path)
+        }
+    }
+
+    let zshrc = home.appendingPathComponent(".zshrc")
+    let bashrc = home.appendingPathComponent(".bashrc")
+    _ = removeCompletionBlock(fileURL: zshrc, marker: "# scl completion", blocks: [zshCompletionBlock()])
+    _ = removeCompletionBlock(fileURL: bashrc, marker: "# scl completion", blocks: [bashCompletionBlock()])
+}
+
+private func uninstallApp(removed: inout [String], skipped: inout [String]) {
+    let home = fm.homeDirectoryForCurrentUser
+    let candidates: [URL] = [
+        URL(fileURLWithPath: "/Applications/Swift Craft Launcher.app"),
+        home.appendingPathComponent("Applications/Swift Craft Launcher.app")
+    ]
+    for url in candidates {
+        if removeFileIfExists(url) {
+            removed.append(url.path)
+        } else {
+            skipped.append(url.path)
+        }
+    }
+}
+
+private func removeFileIfExists(_ url: URL) -> Bool {
+    if fm.fileExists(atPath: url.path) {
+        do {
+            try fm.removeItem(at: url)
+            return true
+        } catch {
+            warn("删除失败: \(url.path) (\(error.localizedDescription))")
+            return false
+        }
+    }
+    return false
+}
+
+private func removeCompletionBlock(fileURL: URL, marker: String, blocks: [String]) -> Bool {
+    guard var existing = try? String(contentsOf: fileURL, encoding: .utf8) else { return false }
+    var changed = false
+    for block in blocks {
+        if existing.contains(block) {
+            existing = existing.replacingOccurrences(of: block, with: "")
+            changed = true
+        }
+    }
+    if existing.contains(marker) {
+        let lines = existing.split(separator: "\n", omittingEmptySubsequences: false)
+        let filtered = lines.filter { !$0.contains(marker) }
+        existing = filtered.joined(separator: "\n")
+        changed = true
+    }
+    if changed {
+        try? existing.write(to: fileURL, atomically: true, encoding: .utf8)
+    }
+    return changed
+}
+
+private func zshCompletionBlock() -> String {
+    "\n# scl completion\n# ensure our completion dir is first in fpath\nfpath=(\"$HOME/.zsh/completions\" ${fpath:#\"$HOME/.zsh/completions\"})\nautoload -Uz compinit && compinit -u\nsource \"$HOME/.zsh/completions/_scl_cli\" 2>/dev/null\ncompdef _scl_cli scl\nzstyle ':completion:*' menu select\nbindkey '^I' menu-complete\n"
+}
+
+private func bashCompletionBlock() -> String {
+    "\n# scl completion\nif [ -f \"$HOME/.bash_completion.d/scl\" ]; then\n  source \"$HOME/.bash_completion.d/scl\"\nfi\n"
+}

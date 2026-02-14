@@ -229,6 +229,18 @@ Use:
 .B scl man --install
 or
 .B scl man --install --user
+.TP
+.B open
+Open the Swift Craft Launcher app.
+.TP
+.B uninstall
+Uninstall CLI, app, or both.
+Use:
+.B scl uninstall cli
+.br
+.B scl uninstall app
+.br
+.B scl uninstall scl
 .SH GAME COMMANDS
 .TP
 .B scl game list [--version <keyword>] [--sort <name|length>] [--order <asc|desc>]
@@ -349,6 +361,8 @@ func zshCompletionScript() -> String {
         'account:账号管理'
         'resources:资源管理'
         'completion:生成补全脚本'
+        'open:打开主程序'
+        'uninstall:卸载组件'
       )
 
       if (( CURRENT == 2 )); then
@@ -398,6 +412,16 @@ func zshCompletionScript() -> String {
             _values 'completion options' '--print'
           fi
           ;;
+        open)
+          _values 'open options' '--help'
+          ;;
+        uninstall)
+          if (( CURRENT == 3 )); then
+            _values 'uninstall target' 'cli' 'app' 'scl' '--help'
+          else
+            _values 'uninstall options' '--help'
+          fi
+          ;;
       esac
     }
 
@@ -411,7 +435,7 @@ func bashCompletionScript() -> String {
       local cur prev words cword
       _init_completion || return
 
-      local groups="set get game account resources completion"
+      local groups="set get game account resources completion open uninstall"
       local game_subs="list status stutue search config create launch stop delete"
       local account_subs="list create delete set-default show"
       local resources_subs="search install list remove"
@@ -452,6 +476,16 @@ func bashCompletionScript() -> String {
         completion)
           COMPREPLY=( $(compgen -W "--print zsh bash fish" -- "$cur") )
           ;;
+        open)
+          COMPREPLY=( $(compgen -W "--help" -- "$cur") )
+          ;;
+        uninstall)
+          if [[ $cword -eq 2 ]]; then
+            COMPREPLY=( $(compgen -W "cli app scl --help" -- "$cur") )
+          else
+            COMPREPLY=( $(compgen -W "--help" -- "$cur") )
+          fi
+          ;;
       esac
     }
 
@@ -468,11 +502,14 @@ func fishCompletionScript() -> String {
     complete -c scl -n '__fish_use_subcommand' -a account -d '账号管理'
     complete -c scl -n '__fish_use_subcommand' -a resources -d '资源管理'
     complete -c scl -n '__fish_use_subcommand' -a completion -d '生成补全脚本'
+    complete -c scl -n '__fish_use_subcommand' -a open -d '打开主程序'
+    complete -c scl -n '__fish_use_subcommand' -a uninstall -d '卸载组件'
 
     complete -c scl -n '__fish_seen_subcommand_from game' -a 'list status stutue search config create launch stop delete'
     complete -c scl -n '__fish_seen_subcommand_from account' -a 'list create delete set-default show'
     complete -c scl -n '__fish_seen_subcommand_from resources' -a 'search install list remove'
     complete -c scl -n '__fish_seen_subcommand_from completion' -a 'zsh bash fish' -l print
+    complete -c scl -n '__fish_seen_subcommand_from uninstall' -a 'cli app scl'
 
     complete -c scl -l help
     complete -c scl -l json
