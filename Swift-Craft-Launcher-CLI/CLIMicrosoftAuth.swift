@@ -330,16 +330,16 @@ enum CLIMicrosoftAuth {
             ]
             let body = bodyParams.map { "\($0.key)=\($0.value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")" }
                 .joined(separator: "&")
-            let data = try await CLIHTTP.post(
-                url: CLIURLConfig.Authentication.token,
-                body: body.data(using: .utf8),
-                headers: ["Content-Type": "application/x-www-form-urlencoded"]
-            )
-            if let token = try? JSONDecoder().decode(OAuthTokenResponse.self, from: data),
-               let access = token.accessToken, !access.isEmpty {
-                return token
+            var request = URLRequest(url: CLIURLConfig.Authentication.token)
+            request.httpMethod = "POST"
+            request.httpBody = body.data(using: .utf8)
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            let (data, _) = try await URLSession.shared.data(for: request)
+            let token = try? JSONDecoder().decode(OAuthTokenResponse.self, from: data)
+            if let access = token?.accessToken, !access.isEmpty {
+                return token!
             }
-            let error = (try? JSONDecoder().decode(OAuthTokenResponse.self, from: data))?.error ?? ""
+            let error = token?.error ?? ""
             if error == "authorization_pending" {
                 try await Task.sleep(nanoseconds: UInt64(waitInterval) * 1_000_000_000)
                 continue
@@ -348,6 +348,9 @@ enum CLIMicrosoftAuth {
                 waitInterval += 5
                 try await Task.sleep(nanoseconds: UInt64(waitInterval) * 1_000_000_000)
                 continue
+            }
+            if error == "expired_token" {
+                throw CLIAuthError.message("设备码已过期，请重新登录")
             }
             if !error.isEmpty {
                 throw CLIAuthError.message("Microsoft 登录失败: \(error)")
