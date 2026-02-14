@@ -55,7 +55,7 @@ private func installZshCompletion() {
 
     let rcPath = home.appendingPathComponent(".zshrc")
     let marker = "# scl completion"
-    let block = "\n\(marker)\n# ensure our completion dir is first in fpath\nfpath=(\"$HOME/.zsh/completions\" ${fpath:#\"$HOME/.zsh/completions\"})\nautoload -Uz compinit && compinit -u\nautoload -Uz _scl_cli && compdef _scl_cli scl\nzstyle ':completion:*' menu select\nbindkey '^I' menu-complete\n"
+    let block = "\n\(marker)\n# ensure our completion dir is first in fpath\nfpath=(\"$HOME/.zsh/completions\" ${fpath:#\"$HOME/.zsh/completions\"})\nautoload -Uz compinit && compinit -u\nsource \"$HOME/.zsh/completions/_scl_cli\" 2>/dev/null\ncompdef _scl_cli scl\nzstyle ':completion:*' menu select\nbindkey '^I' menu-complete\n"
     appendBlockIfMissing(fileURL: rcPath, marker: marker, block: block)
     success("已安装 zsh 补全: \(scriptPath.path)\n请新开终端或执行: source ~/.zshrc")
 }
@@ -98,7 +98,12 @@ private func installFishCompletion() {
 private func appendBlockIfMissing(fileURL: URL, marker: String, block: String) {
     let fm = FileManager.default
     let existing = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
-    if existing.contains(marker) { return }
+    if let range = existing.range(of: marker) {
+        let prefix = String(existing[..<range.lowerBound])
+        let newContent = prefix + block
+        try? newContent.write(to: fileURL, atomically: true, encoding: .utf8)
+        return
+    }
     let newContent = existing + block
     try? newContent.write(to: fileURL, atomically: true, encoding: .utf8)
 }
