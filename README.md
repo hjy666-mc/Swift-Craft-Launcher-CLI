@@ -4,9 +4,9 @@
 
 ## 环境要求
 
-- macOS
+- macOS14+
 - `curl`
-- Swift Craft Launcher 主程序（部分命令依赖主程序响应）
+- Swift Craft Launcher 主程序（极少命令依赖主程序响应）
 
 说明：默认安装流程优先下载预编译二进制，不依赖 Xcode。  
 如果下载失败，会回退到源码编译，此时才需要 Xcode Command Line Tools（`xcodebuild`）。
