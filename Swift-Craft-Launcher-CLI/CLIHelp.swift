@@ -193,6 +193,9 @@ func printAccountHelp() {
 \(stylize("scl account set-default <name>", ANSI.bold + ANSI.blue))
   设为默认账号，并同步到配置项 defaultAccount
 
+\(stylize("scl account use <name>", ANSI.bold + ANSI.blue))
+  切换当前账号（同时更新 defaultAccount）
+
 \(stylize("scl account show <name>", ANSI.bold + ANSI.blue))
   查看账号详情（表格输出）
 """)

@@ -693,6 +693,7 @@ func handleAccount(args: [String]) {
     case "create": accountCreate(args: subArgs)
     case "delete": accountDelete(args: subArgs)
     case "set-default": accountSetDefault(args: subArgs)
+    case "use", "switch": accountUse(args: subArgs)
     case "show": accountShow(args: subArgs)
     default: printAccountHelp()
     }
@@ -852,7 +853,18 @@ func accountSetDefault(args: [String]) {
         fail("用法: scl account set-default <name>")
         return
     }
+    setCurrentAccount(name: name, message: "已设置默认账号: \(name)")
+}
 
+func accountUse(args: [String]) {
+    guard let name = args.first else {
+        fail("用法: scl account use <name>")
+        return
+    }
+    setCurrentAccount(name: name, message: "已切换账号: \(name)")
+}
+
+private func setCurrentAccount(name: String, message: String) {
     var store = loadAccounts()
     guard store.players.contains(name) else {
         fail("账号不存在: \(name)")
@@ -883,7 +895,7 @@ func accountSetDefault(args: [String]) {
         saveUserProfilesToAppDefaults(updated)
     }
 
-    success("已设置默认账号: \(name)")
+    success(message)
 }
 
 func accountShow(args: [String]) {

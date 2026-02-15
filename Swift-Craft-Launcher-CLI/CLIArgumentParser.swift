@@ -194,7 +194,7 @@ struct AccountCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "account",
         abstract: "账号管理",
-        subcommands: [AccountList.self, AccountCreate.self, AccountDelete.self, AccountSetDefault.self, AccountShow.self]
+        subcommands: [AccountList.self, AccountCreate.self, AccountDelete.self, AccountSetDefault.self, AccountUse.self, AccountShow.self]
     )
     @OptionGroup var global: GlobalOptions
 }
@@ -242,6 +242,16 @@ struct AccountSetDefault: ParsableCommand {
     mutating func run() throws {
         applyGlobal(global)
         handleAccount(args: ["set-default", name])
+    }
+}
+
+struct AccountUse: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "use", abstract: "切换当前账号")
+    @OptionGroup var global: GlobalOptions
+    @Argument var name: String
+    mutating func run() throws {
+        applyGlobal(global)
+        handleAccount(args: ["use", name])
     }
 }
 

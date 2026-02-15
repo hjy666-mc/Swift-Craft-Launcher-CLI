@@ -207,7 +207,7 @@ Subcommands:
 .B account
 Manage launcher accounts.
 Subcommands:
-.B list, create, delete, set-default, show
+.B list, create, delete, set-default, use, show
 .TP
 .B resources
 Search, install, list, remove resources.
@@ -389,7 +389,7 @@ func zshCompletionScript() -> String {
           ;;
         account)
           local -a accountSubs
-          accountSubs=('list' 'create' 'delete' 'set-default' 'show' '--help')
+        accountSubs=('list' 'create' 'delete' 'set-default' 'use' 'show' '--help')
           if (( CURRENT == 3 )); then
             _describe 'account subcommand' accountSubs
           else
@@ -437,7 +437,7 @@ func bashCompletionScript() -> String {
 
       local groups="set get game account resources completion open uninstall"
       local game_subs="list status stutue search config create launch stop delete"
-      local account_subs="list create delete set-default show"
+      local account_subs="list create delete set-default use show"
       local resources_subs="search install list remove"
 
       if [[ $cword -eq 1 ]]; then
@@ -506,7 +506,7 @@ func fishCompletionScript() -> String {
     complete -c scl -n '__fish_use_subcommand' -a uninstall -d '卸载组件'
 
     complete -c scl -n '__fish_seen_subcommand_from game' -a 'list status stutue search config create launch stop delete'
-    complete -c scl -n '__fish_seen_subcommand_from account' -a 'list create delete set-default show'
+    complete -c scl -n '__fish_seen_subcommand_from account' -a 'list create delete set-default use show'
     complete -c scl -n '__fish_seen_subcommand_from resources' -a 'search install list remove'
     complete -c scl -n '__fish_seen_subcommand_from completion' -a 'zsh bash fish' -l print
     complete -c scl -n '__fish_seen_subcommand_from uninstall' -a 'cli app scl'
