@@ -9,7 +9,7 @@ scl <命令组> <子命令> [参数] [选项]
 ```
 
 全局选项：
-- `--json` 以 JSON 形式输出（适合脚本/自动化）。
+- `--json` 以 JSON 形式输出（适合脚本/AI调用）。
 
 命令组：
 - `set` 设置配置项
@@ -25,7 +25,7 @@ scl <命令组> <子命令> [参数] [选项]
 
 ## set
 
-设置 CLI 配置项（包含部分主程序 AppStorage）。
+设置 CLI 配置项（包含主程序 AppStorage）。
 
 ```
 scl set <key> <value>
@@ -120,6 +120,7 @@ scl game delete <name>
 ## account
 
 账号管理（离线/微软）。
+> 微软登录需要指定client id
 
 ### list
 
@@ -251,22 +252,10 @@ scl uninstall scl
 
 ## shell
 
-进入交互式 `sclshell`：
+进入交互式 `shell`：
 
 ```
 scl shell
 ```
 
 交互模式内可执行常用子命令，输入 `help` 查看列表，`exit/quit` 退出。
-
-## 常用示例
-
-```
-scl get --all
-scl game list
-scl game create --modloader fabric --gameversion 1.21.1 --name my-fabric
-scl game launch my-fabric --memory 6G --account demoUser
-scl resources search --mods sodium
-scl resources install AANobbMI --game my-fabric --type mod
-scl account use demoUser
-```
