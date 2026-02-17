@@ -1,4 +1,5 @@
 import ArgumentParser
+import Darwin
 
 var args = Array(CommandLine.arguments.dropFirst())
 jsonOutputEnabled = args.contains("--json")
@@ -9,3 +10,5 @@ if args.isEmpty || args == ["--help"] || args == ["-h"] || args == ["help"] {
 } else {
     SCL.main(args)
 }
+emitExitCode()
+exit(Int32(processExitCode))

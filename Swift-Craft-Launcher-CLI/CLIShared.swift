@@ -177,6 +177,7 @@ struct MinecraftVersionManifest: Codable {
 
 let fm = FileManager.default
 var jsonOutputEnabled = false
+var processExitCode = 0
 let configURL: URL = {
     let base = fm.homeDirectoryForCurrentUser
         .appendingPathComponent(".scl", isDirectory: true)
@@ -267,11 +268,24 @@ func warn(_ text: String) {
 }
 
 func fail(_ text: String) {
+    setExitCode(1)
     if jsonOutputEnabled {
         printJSON(["ok": false, "level": "error", "message": text])
         return
     }
     fputs(stylize("✗ \(text)\n", ANSI.red), stderr)
+}
+
+func setExitCode(_ code: Int) {
+    if code > processExitCode { processExitCode = code }
+}
+
+func emitExitCode() {
+    if jsonOutputEnabled {
+        printJSON(["type": "exit", "code": processExitCode])
+        return
+    }
+    print(stylize("退出代码: \(processExitCode)", ANSI.gray))
 }
 
 func printTable(headers: [String], rows: [[String]]) {
