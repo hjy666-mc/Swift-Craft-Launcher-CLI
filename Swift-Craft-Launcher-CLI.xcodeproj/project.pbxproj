@@ -104,11 +104,12 @@
 				};
 			};
 			buildConfigurationList = 0E6278602F3E164F00B73EE8 /* Build configuration list for PBXProject "Swift-Craft-Launcher-CLI" */;
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 0E62785C2F3E164F00B73EE8;
 			minimizedProjectReferenceProxies = 1;

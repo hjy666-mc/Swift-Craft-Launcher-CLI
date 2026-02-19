@@ -1663,13 +1663,12 @@ func handleLang(args: [String]) {
     let sub = args[0].lowercased()
     switch sub {
     case "list":
-        ensureLanguageDir()
         let codes = availableLanguages()
         if jsonOutputEnabled {
             printJSON(["ok": true, "type": "lang", "items": codes])
             return
         }
-        print(tr("lang_available"))
+        print(L("lang_available"))
         for code in codes {
             print("  \(code)")
         }
@@ -1678,31 +1677,31 @@ func handleLang(args: [String]) {
             fail("用法: scl lang set <code>")
             return
         }
-        let code = args[1].lowercased()
+        let code = args[1]
+        let normalized = normalizeLanguageCode(code)
         let codes = availableLanguages()
-        guard codes.contains(code) else {
-            fail(tr("lang_unknown", vars: ["code": code]))
+        guard codes.contains(normalized) else {
+            fail(L("lang_unknown", normalized))
             return
         }
         var cfg = loadConfig()
-        cfg.language = code
+        cfg.language = normalized
         saveConfig(cfg)
-        success(tr("lang_set", vars: ["code": code]))
+        success(L("lang_set", normalized))
     case "show":
         let code = currentLanguageCode()
         if jsonOutputEnabled {
             printJSON(["ok": true, "type": "lang", "current": code])
             return
         }
-        print(tr("lang_current", vars: ["code": code]))
+        print(L("lang_current", code))
     case "path":
-        ensureLanguageDir()
-        let path = languageDirPath()
+        let path = ""
         if jsonOutputEnabled {
             printJSON(["ok": true, "type": "lang", "path": path])
             return
         }
-        print(tr("lang_pack_dir", vars: ["path": path]))
+        print(L("lang_pack_dir", path))
     default:
         printLangHelp()
     }

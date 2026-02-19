@@ -71,7 +71,7 @@ struct CLIConfig: Codable {
             preferredResourceType: "mod",
             pageSize: 12,
             autoOpenMainApp: false,
-            language: "zh"
+            language: "zh-Hans"
         )
     }
 }
@@ -291,7 +291,7 @@ func emitExitCode() {
         printJSON(["type": "exit", "code": processExitCode])
         return
     }
-    let text = tr("exit_code", vars: ["code": String(processExitCode)])
+    let text = L("exit_code", String(processExitCode))
     print(stylize(text, ANSI.gray))
 }
 

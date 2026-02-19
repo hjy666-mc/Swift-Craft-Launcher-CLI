@@ -19,42 +19,42 @@ func printGlobalHelp() {
 \(stylize("███████║╚██████╗███████╗    ╚██████╗███████╗██║", ANSI.bold + ANSI.cyan))
 \(stylize("╚══════╝ ╚═════╝╚══════╝     ╚═════╝╚══════╝╚═╝", ANSI.bold + ANSI.cyan))
 
-\(stylize("Swift Craft Launcher CLI", ANSI.bold + ANSI.cyan))
-\(stylize("Minecraft 启动器的现代化命令行工具", ANSI.gray))
+\(stylize(L("help_title"), ANSI.bold + ANSI.cyan))
+\(stylize(L("help_subtitle"), ANSI.gray))
 
-\(stylize("基础语法", ANSI.bold + ANSI.blue))
-  scl <命令组> <子命令> [参数] [选项]
-  全局选项: --json 以 JSON 格式输出
+\(stylize(L("help_syntax_title"), ANSI.bold + ANSI.blue))
+  \(L("help_syntax_usage"))
+  \(L("help_syntax_json"))
 
-\(stylize("命令组", ANSI.bold + ANSI.blue))
-  set        设置配置项
-  get        读取配置项
-  game       游戏实例管理与启动
-  account    账号管理
-  resources  资源搜索/安装/管理
-  completion 生成补全脚本（zsh/bash/fish）
-  man        查看/安装 man 手册
-  lang       语言设置
-  open       打开主程序
-  uninstall  卸载 CLI / 主程序
+\(stylize(L("help_groups_title"), ANSI.bold + ANSI.blue))
+  set        \(L("help_group_set"))
+  get        \(L("help_group_get"))
+  game       \(L("help_group_game"))
+  account    \(L("help_group_account"))
+  resources  \(L("help_group_resources"))
+  completion \(L("help_group_completion"))
+  man        \(L("help_group_man"))
+  lang       \(L("help_group_lang"))
+  open       \(L("help_group_open"))
+  uninstall  \(L("help_group_uninstall"))
 
-\(stylize("快速示例", ANSI.bold + ANSI.blue))
-  scl get --all
-  scl game list
-  scl game launch my-pack --memory 6G --account demoUser
-  scl resources search --mods sodium
-  scl resources install AANobbMI --game my-pack --type mod
+\(stylize(L("help_examples_title"), ANSI.bold + ANSI.blue))
+  \(L("help_example_1"))
+  \(L("help_example_2"))
+  \(L("help_example_3"))
+  \(L("help_example_4"))
+  \(L("help_example_5"))
 
-\(stylize("查看细致帮助", ANSI.bold + ANSI.blue))
-  scl set --help
-  scl get --help
-  scl game --help
-  scl account --help
-  scl resources --help
-  scl completion --help
-  scl man --help
-  scl lang --help
-  scl uninstall --help
+\(stylize(L("help_more_title"), ANSI.bold + ANSI.blue))
+  \(L("help_more_set"))
+  \(L("help_more_get"))
+  \(L("help_more_game"))
+  \(L("help_more_account"))
+  \(L("help_more_resources"))
+  \(L("help_more_completion"))
+  \(L("help_more_man"))
+  \(L("help_more_lang"))
+  \(L("help_more_uninstall"))
 """)
 }
 
@@ -68,26 +68,26 @@ func printCompletionHelp() {
         return
     }
     print("""
-\(stylize("COMPLETION 命令", ANSI.bold + ANSI.cyan))
+\(stylize(L("help_completion_title"), ANSI.bold + ANSI.cyan))
 
-\(stylize("scl completion <zsh|bash|fish>", ANSI.bold + ANSI.blue))
-  自动安装并写入对应 shell 配置文件
+\(stylize(L("help_completion_install_cmd"), ANSI.bold + ANSI.blue))
+  \(L("help_completion_install_desc"))
 
-\(stylize("scl completion --print <zsh|bash|fish>", ANSI.bold + ANSI.blue))
-  仅输出补全脚本到 stdout
+\(stylize(L("help_completion_print_cmd"), ANSI.bold + ANSI.blue))
+  \(L("help_completion_print_desc"))
 
-\(stylize("快速启用（当前会话）", ANSI.bold + ANSI.blue))
-  zsh:  source <(scl completion --print zsh)
-  bash: source <(scl completion --print bash)
-  fish: scl completion --print fish | source
+\(stylize(L("help_completion_session_title"), ANSI.bold + ANSI.blue))
+  \(L("help_completion_session_zsh"))
+  \(L("help_completion_session_bash"))
+  \(L("help_completion_session_fish"))
 
-\(stylize("持久化启用", ANSI.bold + ANSI.blue))
+\(stylize(L("help_completion_persist_title"), ANSI.bold + ANSI.blue))
   zsh:
-    scl completion zsh
+    \(L("help_completion_persist_zsh"))
   bash:
-    scl completion bash
+    \(L("help_completion_persist_bash"))
   fish:
-    scl completion fish
+    \(L("help_completion_persist_fish"))
 """)
 }
 
