@@ -29,23 +29,36 @@ add_path_if_needed() {
     return
   fi
 
-  local shell_name rc_file path_line
+  local shell_name path_line
   shell_name="$(basename "${SHELL:-}")"
+  path_line="export PATH=\"${INSTALL_DIR}:\$PATH\""
+
+  local -a rc_files=()
   case "${shell_name}" in
-    zsh) rc_file="${HOME}/.zprofile" ;;
-    bash) rc_file="${HOME}/.bash_profile" ;;
-    *) rc_file="${HOME}/.profile" ;;
+    zsh)
+      rc_files+=("${HOME}/.zprofile" "${HOME}/.zshrc")
+      ;;
+    bash)
+      rc_files+=("${HOME}/.bash_profile" "${HOME}/.bashrc")
+      ;;
+    *)
+      rc_files+=("${HOME}/.profile")
+      ;;
   esac
 
-  path_line="export PATH=\"${INSTALL_DIR}:\$PATH\""
-  if [[ ! -f "${rc_file}" ]] || ! grep -Fq "${INSTALL_DIR}" "${rc_file}"; then
-    {
-      echo ""
-      echo "# Added by ${BIN_NAME} installer"
-      echo "${path_line}"
-    } >> "${rc_file}"
-    echo "PATH updated in ${rc_file}."
-    echo "Open a new terminal or run: source ${rc_file}"
+  for rc_file in "${rc_files[@]}"; do
+    if [[ ! -f "${rc_file}" ]] || ! grep -Fq "${INSTALL_DIR}" "${rc_file}"; then
+      {
+        echo ""
+        echo "# Added by ${BIN_NAME} installer"
+        echo "${path_line}"
+      } >> "${rc_file}"
+      echo "PATH updated in ${rc_file}."
+    fi
+  done
+
+  if [[ ${#rc_files[@]} -gt 0 ]]; then
+    echo "Open a new terminal or run: source ${rc_files[0]}"
   fi
 }
 
