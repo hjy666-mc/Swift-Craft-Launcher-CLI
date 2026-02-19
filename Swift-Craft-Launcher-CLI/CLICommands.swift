@@ -1657,42 +1657,42 @@ func handleUninstall(args: [String]) {
 
 func uninstall(target: UninstallTarget) {
     var removed: [String] = []
-    var skipped: [String] = []
+    var missing: [String] = []
+    var failed: [String] = []
 
     switch target {
     case .cli:
-        uninstallCLI(removed: &removed, skipped: &skipped)
+        uninstallCLI(removed: &removed, missing: &missing, failed: &failed)
     case .app:
-        uninstallApp(removed: &removed, skipped: &skipped)
+        uninstallApp(removed: &removed, missing: &missing, failed: &failed)
     case .scl:
-        uninstallCLI(removed: &removed, skipped: &skipped)
-        uninstallApp(removed: &removed, skipped: &skipped)
+        uninstallCLI(removed: &removed, missing: &missing, failed: &failed)
+        uninstallApp(removed: &removed, missing: &missing, failed: &failed)
     }
 
-    if removed.isEmpty && skipped.isEmpty {
+    if removed.isEmpty && missing.isEmpty && failed.isEmpty {
         warn("未找到可卸载的内容")
         return
     }
     if !removed.isEmpty {
         success("已移除: \(removed.joined(separator: ", "))")
     }
-    if !skipped.isEmpty {
-        warn("未找到: \(skipped.joined(separator: ", "))")
+    if !failed.isEmpty {
+        warn("未移除: \(failed.joined(separator: ", "))")
+    }
+    if !missing.isEmpty {
+        warn("未找到: \(missing.joined(separator: ", "))")
     }
 }
 
-private func uninstallCLI(removed: inout [String], skipped: inout [String]) {
+private func uninstallCLI(removed: inout [String], missing: inout [String], failed: inout [String]) {
     let home = fm.homeDirectoryForCurrentUser
     let candidates: [URL] = [
         home.appendingPathComponent(".local/bin/scl"),
         URL(fileURLWithPath: "/usr/local/bin/scl")
     ]
     for url in candidates {
-        if removeFileIfExists(url) {
-            removed.append(url.path)
-        } else {
-            skipped.append(url.path)
-        }
+        recordRemoval(url, removed: &removed, missing: &missing, failed: &failed)
     }
 
     let completionFiles: [URL] = [
@@ -1702,9 +1702,7 @@ private func uninstallCLI(removed: inout [String], skipped: inout [String]) {
         home.appendingPathComponent(".config/fish/completions/scl.fish")
     ]
     for url in completionFiles {
-        if removeFileIfExists(url) {
-            removed.append(url.path)
-        }
+        recordRemoval(url, removed: &removed, missing: &missing, failed: &failed, trackMissing: false)
     }
 
     let zshrc = home.appendingPathComponent(".zshrc")
@@ -1713,32 +1711,47 @@ private func uninstallCLI(removed: inout [String], skipped: inout [String]) {
     _ = removeCompletionBlock(fileURL: bashrc, marker: "# scl completion", blocks: [bashCompletionBlock()])
 }
 
-private func uninstallApp(removed: inout [String], skipped: inout [String]) {
+private func uninstallApp(removed: inout [String], missing: inout [String], failed: inout [String]) {
     let home = fm.homeDirectoryForCurrentUser
     let candidates: [URL] = [
         URL(fileURLWithPath: "/Applications/Swift Craft Launcher.app"),
         home.appendingPathComponent("Applications/Swift Craft Launcher.app")
     ]
     for url in candidates {
-        if removeFileIfExists(url) {
-            removed.append(url.path)
-        } else {
-            skipped.append(url.path)
-        }
+        recordRemoval(url, removed: &removed, missing: &missing, failed: &failed)
     }
 }
 
-private func removeFileIfExists(_ url: URL) -> Bool {
+private enum RemoveResult {
+    case removed
+    case missing
+    case failed(String)
+}
+
+private func removeFileIfExists(_ url: URL) -> RemoveResult {
     if fm.fileExists(atPath: url.path) {
         do {
             try fm.removeItem(at: url)
-            return true
+            return .removed
         } catch {
-            warn("删除失败: \(url.path) (\(error.localizedDescription))")
-            return false
+            let message = "删除失败: \(url.path) (\(error.localizedDescription))"
+            warn(message)
+            setExitCode(1)
+            return .failed(message)
         }
     }
-    return false
+    return .missing
+}
+
+private func recordRemoval(_ url: URL, removed: inout [String], missing: inout [String], failed: inout [String], trackMissing: Bool = true) {
+    switch removeFileIfExists(url) {
+    case .removed:
+        removed.append(url.path)
+    case .missing:
+        if trackMissing { missing.append(url.path) }
+    case .failed:
+        failed.append(url.path)
+    }
 }
 
 private func removeCompletionBlock(fileURL: URL, marker: String, blocks: [String]) -> Bool {
