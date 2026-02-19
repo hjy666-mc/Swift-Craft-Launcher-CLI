@@ -2,6 +2,9 @@
 
 `scl` 是 `Swift Craft Launcher` 的命令行工具，主要用于终端场景下的实例、账号、资源管理。
 
+[文档](sclcli.dcstudio.org)
+[主项目](github.com/suhang12332/Swift-Craft-Launcher)
+
 ## 环境要求
 
 - macOS14+
