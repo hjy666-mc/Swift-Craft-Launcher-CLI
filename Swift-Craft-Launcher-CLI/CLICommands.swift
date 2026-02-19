@@ -1655,6 +1655,59 @@ func handleUninstall(args: [String]) {
     uninstall(target: target)
 }
 
+func handleLang(args: [String]) {
+    if args.isEmpty || args.contains("--help") || args.contains("-h") {
+        printLangHelp()
+        return
+    }
+    let sub = args[0].lowercased()
+    switch sub {
+    case "list":
+        ensureLanguageDir()
+        let codes = availableLanguages()
+        if jsonOutputEnabled {
+            printJSON(["ok": true, "type": "lang", "items": codes])
+            return
+        }
+        print(tr("lang_available"))
+        for code in codes {
+            print("  \(code)")
+        }
+    case "set":
+        guard args.count >= 2 else {
+            fail("用法: scl lang set <code>")
+            return
+        }
+        let code = args[1].lowercased()
+        let codes = availableLanguages()
+        guard codes.contains(code) else {
+            fail(tr("lang_unknown", vars: ["code": code]))
+            return
+        }
+        var cfg = loadConfig()
+        cfg.language = code
+        saveConfig(cfg)
+        success(tr("lang_set", vars: ["code": code]))
+    case "show":
+        let code = currentLanguageCode()
+        if jsonOutputEnabled {
+            printJSON(["ok": true, "type": "lang", "current": code])
+            return
+        }
+        print(tr("lang_current", vars: ["code": code]))
+    case "path":
+        ensureLanguageDir()
+        let path = languageDirPath()
+        if jsonOutputEnabled {
+            printJSON(["ok": true, "type": "lang", "path": path])
+            return
+        }
+        print(tr("lang_pack_dir", vars: ["path": path]))
+    default:
+        printLangHelp()
+    }
+}
+
 func uninstall(target: UninstallTarget) {
     var removed: [String] = []
     var missing: [String] = []

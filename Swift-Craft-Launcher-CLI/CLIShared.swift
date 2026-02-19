@@ -10,6 +10,7 @@ struct CLIConfig: Codable {
     var preferredResourceType: String
     var pageSize: Int
     var autoOpenMainApp: Bool
+    var language: String
 
     enum CodingKeys: String, CodingKey {
         case gameDir
@@ -20,6 +21,7 @@ struct CLIConfig: Codable {
         case preferredResourceType
         case pageSize
         case autoOpenMainApp
+        case language
     }
 
     init(
@@ -30,7 +32,8 @@ struct CLIConfig: Codable {
         defaultInstance: String,
         preferredResourceType: String,
         pageSize: Int,
-        autoOpenMainApp: Bool
+        autoOpenMainApp: Bool,
+        language: String
     ) {
         self.gameDir = gameDir
         self.javaPath = javaPath
@@ -40,6 +43,7 @@ struct CLIConfig: Codable {
         self.preferredResourceType = preferredResourceType
         self.pageSize = pageSize
         self.autoOpenMainApp = autoOpenMainApp
+        self.language = language
     }
 
     init(from decoder: Decoder) throws {
@@ -53,6 +57,7 @@ struct CLIConfig: Codable {
         self.preferredResourceType = try container.decodeIfPresent(String.self, forKey: .preferredResourceType) ?? fallback.preferredResourceType
         self.pageSize = max(5, min(50, try container.decodeIfPresent(Int.self, forKey: .pageSize) ?? fallback.pageSize))
         self.autoOpenMainApp = try container.decodeIfPresent(Bool.self, forKey: .autoOpenMainApp) ?? fallback.autoOpenMainApp
+        self.language = try container.decodeIfPresent(String.self, forKey: .language) ?? fallback.language
     }
 
     static func `default`() -> CLIConfig {
@@ -65,7 +70,8 @@ struct CLIConfig: Codable {
             defaultInstance: "",
             preferredResourceType: "mod",
             pageSize: 12,
-            autoOpenMainApp: false
+            autoOpenMainApp: false,
+            language: "zh"
         )
     }
 }
@@ -285,7 +291,8 @@ func emitExitCode() {
         printJSON(["type": "exit", "code": processExitCode])
         return
     }
-    print(stylize("退出代码: \(processExitCode)", ANSI.gray))
+    let text = tr("exit_code", vars: ["code": String(processExitCode)])
+    print(stylize(text, ANSI.gray))
 }
 
 func printTable(headers: [String], rows: [[String]]) {
@@ -2274,6 +2281,7 @@ func configRows(_ config: CLIConfig) -> [[String]] {
         ["preferredResourceType", config.preferredResourceType],
         ["pageSize", String(config.pageSize)],
         ["autoOpenMainApp", config.autoOpenMainApp ? "true" : "false"],
+        ["language", config.language],
     ]
     for spec in appStorageSpecs {
         rows.append([spec.key, getAppStorageValue(key: spec.key) ?? ""])

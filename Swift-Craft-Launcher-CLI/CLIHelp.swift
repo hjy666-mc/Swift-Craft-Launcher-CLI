@@ -34,6 +34,7 @@ func printGlobalHelp() {
   resources  资源搜索/安装/管理
   completion 生成补全脚本（zsh/bash/fish）
   man        查看/安装 man 手册
+  lang       语言设置
   open       打开主程序
   uninstall  卸载 CLI / 主程序
 
@@ -52,6 +53,7 @@ func printGlobalHelp() {
   scl resources --help
   scl completion --help
   scl man --help
+  scl lang --help
   scl uninstall --help
 """)
 }
@@ -343,5 +345,31 @@ func printUninstallHelp() {
 
 \(stylize("scl uninstall scl", ANSI.bold + ANSI.blue))
   同时卸载 CLI 与主程序
+""")
+}
+
+func printLangHelp() {
+    if jsonOutputEnabled {
+        printJSON([
+            "ok": true,
+            "type": "help",
+            "topic": "lang"
+        ])
+        return
+    }
+    print("""
+\(stylize("LANG 命令", ANSI.bold + ANSI.cyan))
+
+\(stylize("scl lang list", ANSI.bold + ANSI.blue))
+  列出内置与已安装语言
+
+\(stylize("scl lang set <code>", ANSI.bold + ANSI.blue))
+  设置语言（内置: zh / en；其他来自语言包）
+
+\(stylize("scl lang show", ANSI.bold + ANSI.blue))
+  查看当前语言
+
+\(stylize("scl lang path", ANSI.bold + ANSI.blue))
+  显示语言包目录
 """)
 }

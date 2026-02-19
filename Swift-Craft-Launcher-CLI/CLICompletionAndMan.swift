@@ -223,6 +223,11 @@ Install shell completion and update config file.
 .B scl completion --print zsh|bash|fish
 Print completion script to stdout.
 .TP
+.B lang
+Language settings.
+Subcommands:
+.B list, set, show, path
+.TP
 .B man
 Print or install this man page.
 Use:
@@ -361,6 +366,7 @@ func zshCompletionScript() -> String {
         'account:账号管理'
         'resources:资源管理'
         'completion:生成补全脚本'
+        'lang:语言设置'
         'open:打开主程序'
         'uninstall:卸载组件'
       )
@@ -412,6 +418,13 @@ func zshCompletionScript() -> String {
             _values 'completion options' '--print'
           fi
           ;;
+        lang)
+          if (( CURRENT == 3 )); then
+            _values 'lang subcommand' 'list' 'set' 'show' 'path' '--help'
+          else
+            _values 'lang options' '--help'
+          fi
+          ;;
         open)
           _values 'open options' '--help'
           ;;
@@ -435,7 +448,7 @@ func bashCompletionScript() -> String {
       local cur prev words cword
       _init_completion || return
 
-      local groups="set get game account resources completion open uninstall"
+      local groups="set get game account resources completion lang open uninstall"
       local game_subs="list status stutue search config create launch stop delete"
       local account_subs="list create delete set-default use show"
       local resources_subs="search install list remove"
@@ -476,6 +489,13 @@ func bashCompletionScript() -> String {
         completion)
           COMPREPLY=( $(compgen -W "--print zsh bash fish" -- "$cur") )
           ;;
+        lang)
+          if [[ $cword -eq 2 ]]; then
+            COMPREPLY=( $(compgen -W "list set show path --help" -- "$cur") )
+          else
+            COMPREPLY=( $(compgen -W "--help" -- "$cur") )
+          fi
+          ;;
         open)
           COMPREPLY=( $(compgen -W "--help" -- "$cur") )
           ;;
@@ -502,6 +522,7 @@ func fishCompletionScript() -> String {
     complete -c scl -n '__fish_use_subcommand' -a account -d '账号管理'
     complete -c scl -n '__fish_use_subcommand' -a resources -d '资源管理'
     complete -c scl -n '__fish_use_subcommand' -a completion -d '生成补全脚本'
+    complete -c scl -n '__fish_use_subcommand' -a lang -d '语言设置'
     complete -c scl -n '__fish_use_subcommand' -a open -d '打开主程序'
     complete -c scl -n '__fish_use_subcommand' -a uninstall -d '卸载组件'
 
@@ -509,6 +530,7 @@ func fishCompletionScript() -> String {
     complete -c scl -n '__fish_seen_subcommand_from account' -a 'list create delete set-default use show'
     complete -c scl -n '__fish_seen_subcommand_from resources' -a 'search install list remove'
     complete -c scl -n '__fish_seen_subcommand_from completion' -a 'zsh bash fish' -l print
+    complete -c scl -n '__fish_seen_subcommand_from lang' -a 'list set show path'
     complete -c scl -n '__fish_seen_subcommand_from uninstall' -a 'cli app scl'
 
     complete -c scl -l help

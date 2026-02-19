@@ -35,7 +35,7 @@ struct SCL: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scl",
         abstract: "Swift Craft Launcher CLI",
-        subcommands: [SetCommand.self, GetCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self, OpenCommand.self, UninstallCommand.self, ShellCommand.self]
+        subcommands: [SetCommand.self, GetCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self, LangCommand.self, OpenCommand.self, UninstallCommand.self, ShellCommand.self]
     )
     @OptionGroup var global: GlobalOptions
 }
@@ -403,6 +403,52 @@ struct ManCommand: ParsableCommand {
     }
 }
 
+struct LangCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "lang",
+        abstract: "语言设置",
+        subcommands: [LangList.self, LangSet.self, LangShow.self, LangPath.self]
+    )
+    @OptionGroup var global: GlobalOptions
+}
+
+struct LangList: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "list", abstract: "列出可用语言")
+    @OptionGroup var global: GlobalOptions
+    mutating func run() throws {
+        applyGlobal(global)
+        handleLang(args: ["list"])
+    }
+}
+
+struct LangSet: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "set", abstract: "切换语言")
+    @OptionGroup var global: GlobalOptions
+    @Argument var code: String
+    mutating func run() throws {
+        applyGlobal(global)
+        handleLang(args: ["set", code])
+    }
+}
+
+struct LangShow: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "show", abstract: "查看当前语言")
+    @OptionGroup var global: GlobalOptions
+    mutating func run() throws {
+        applyGlobal(global)
+        handleLang(args: ["show"])
+    }
+}
+
+struct LangPath: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "path", abstract: "语言包目录")
+    @OptionGroup var global: GlobalOptions
+    mutating func run() throws {
+        applyGlobal(global)
+        handleLang(args: ["path"])
+    }
+}
+
 struct OpenCommand: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "open", abstract: "打开主程序")
     @OptionGroup var global: GlobalOptions
@@ -505,6 +551,8 @@ private func runShellCommand(_ line: String) {
         handleCompletion(args: args)
     case "man":
         handleMan(args: args)
+    case "lang":
+        handleLang(args: args)
     case "open":
         _ = openMainApp()
     case "uninstall":

@@ -19,6 +19,7 @@ scl <命令组> <子命令> [参数] [选项]
 - `resources` 资源搜索/安装/管理
 - `completion` 生成并安装 shell 补全
 - `man` 查看/安装 man 手册
+- `lang` 语言设置
 - `open` 打开主程序
 - `uninstall` 卸载组件
 - `shell` 进入交互式 `sclshell`
@@ -230,6 +231,15 @@ scl completion --print zsh
 scl man
 scl man --install
 scl man --install --user
+```
+
+## lang
+
+```
+scl lang list
+scl lang set <code>
+scl lang show
+scl lang path
 ```
 
 ## open
