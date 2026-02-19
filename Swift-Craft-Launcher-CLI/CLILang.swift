@@ -30,21 +30,49 @@ func currentLanguageCode() -> String {
     return normalizeLanguageCode(loadConfig().language)
 }
 
-private func localizedBundle(for code: String) -> Bundle {
+private var cachedStrings: [String: [String: String]] = [:]
+
+private func stringsFileURL(for code: String) -> URL {
     let normalized = normalizeLanguageCode(code)
-    if let path = Bundle.main.path(forResource: normalized, ofType: "lproj"),
-       let bundle = Bundle(path: path) {
-        return bundle
+    let execURL = URL(fileURLWithPath: CommandLine.arguments[0])
+    let base = execURL.deletingLastPathComponent()
+    let direct = base
+        .appendingPathComponent("\(normalized).lproj", isDirectory: true)
+        .appendingPathComponent("Localizable.strings")
+    let resources = base
+        .appendingPathComponent("Resources", isDirectory: true)
+        .appendingPathComponent("\(normalized).lproj", isDirectory: true)
+        .appendingPathComponent("Localizable.strings")
+    if FileManager.default.fileExists(atPath: direct.path) {
+        return direct
     }
-    return Bundle.main
+    return resources
+}
+
+private func loadStrings(for code: String) -> [String: String] {
+    let normalized = normalizeLanguageCode(code)
+    if let cached = cachedStrings[normalized] {
+        return cached
+    }
+    let url = stringsFileURL(for: normalized)
+    let dict = NSDictionary(contentsOf: url) as? [String: String] ?? [:]
+    cachedStrings[normalized] = dict
+    return dict
 }
 
 func L(_ key: String, _ args: CVarArg...) -> String {
-    let bundle = localizedBundle(for: currentLanguageCode())
-    let format = bundle.localizedString(forKey: key, value: key, table: nil)
+    let code = currentLanguageCode()
+    let strings = loadStrings(for: code)
+    let fallbackStrings = loadStrings(for: "zh-Hans")
+    let format = strings[key] ?? fallbackStrings[key] ?? key
     if args.isEmpty {
         return format
     }
-    let locale = Locale(identifier: currentLanguageCode())
+    let locale = Locale(identifier: normalizeLanguageCode(code))
     return String(format: format, locale: locale, arguments: args)
+}
+
+func langPackDirPath() -> String {
+    let base = configURL.deletingLastPathComponent()
+    return base.appendingPathComponent("lang", isDirectory: true).path
 }

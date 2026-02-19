@@ -3,7 +3,7 @@
 "lang_current" = "Current language: %@";
 "lang_set" = "Language set to: %@";
 "lang_available" = "Available languages:";
-"lang_pack_dir" = "Language pack dir: ~/Library/Application Support/Swift Craft Launcher/lang";
+"lang_pack_dir" = "Language pack dir: %@";
 "lang_unknown" = "Unknown language: %@";
 
 "help_title" = "Swift Craft Launcher CLI";
@@ -52,3 +52,80 @@
 "help_completion_persist_zsh" = "scl completion zsh";
 "help_completion_persist_bash" = "scl completion bash";
 "help_completion_persist_fish" = "scl completion fish";
+
+"help_game_title" = "GAME";
+"help_game_delete_cmd" = "scl game delete <name>";
+"help_game_delete_block" = "  Delete instance directory\n  Example: scl game delete vanilla-1.20";
+"help_game_list_cmd" = "scl game list [--version <keyword>]";
+"help_game_list_block" = "  List local instances; in interactive mode you can page and view details\n  Options:\n    --sort <name|length>  Sort field\n    --order <asc|desc>    Sort order\n  Example: scl game list --version 1.20";
+"help_game_status_cmd" = "scl game status [instance]";
+"help_game_status_block" = "  Show instance status and details (info, mods, datapacks, worlds, shaders, resourcepacks)\n  Alias: scl game stutue [instance]\n  Examples:\n    scl game status 1.21.5\n    scl game stutue";
+"help_game_search_cmd" = "scl game search <keyword>";
+"help_game_search_block" = "  Search local instances by keyword (table output)\n  Options:\n    --sort <name|length>  Sort field\n    --order <asc|desc>    Sort order\n  Example: scl game search fabric";
+"help_game_config_cmd" = "scl game config <instance>";
+"help_game_config_block" = "  Show instance and extra options config (table output)\n  Example: scl game config vanilla-1.20";
+"help_game_create_cmd" = "scl game create [options]";
+"help_game_create_block" = "  Create instance via main app (CLI does not reimplement install)\n  Options:\n    --modloader <vanilla|fabric|forge|neoforge|quilt>\n    --gameversion <version>   e.g. 1.21.1\n    --name <instance>         instance name\n  Note:\n    If options are omitted, use interactive selection\n  Example:\n    scl game create --modloader fabric --gameversion 1.21.1 --name my-fabric";
+"help_game_launch_cmd" = "scl game launch [instance] [options]";
+"help_game_launch_block" = "  Launch instance (reads launch command from main app); interactive if instance omitted\n  Options:\n    --memory <value>   e.g. 4G / 6G\n    --java <path>      Java executable path\n    --account <name>   account name\n  Example:\n    scl game launch vanilla-1.20 --memory 6G --account demoUser";
+"help_game_stop_cmd" = "scl game stop <instance|--all>";
+"help_game_stop_block" = "  Stop CLI-launched instance process\n  Examples:\n    scl game stop vanilla-1.20\n    scl game stop --all";
+"help_game_controls_block" = "Controls (two layouts):\n  ↑/↓ or j/k select\n  ←/→ or h/l page (max 12 items)\n  Enter view/confirm\n  Esc back\n  q quit";
+
+"help_account_title" = "ACCOUNT";
+"help_account_list_cmd" = "scl account list";
+"help_account_list_block" = "  List local accounts (table output)";
+"help_account_create_offline_cmd" = "scl account create <username> -offline";
+"help_account_create_offline_block" = "  Create offline account\n  Example: scl account create demoUser -offline";
+"help_account_create_ms_cmd" = "scl account create -microsoft";
+"help_account_create_ms_block" = "  Device-code login with Microsoft (opens browser)";
+"help_account_delete_cmd" = "scl account delete <name>";
+"help_account_delete_block" = "  Delete account";
+"help_account_set_default_cmd" = "scl account set-default <name>";
+"help_account_set_default_block" = "  Set default account and sync to defaultAccount";
+"help_account_use_cmd" = "scl account use <name>";
+"help_account_use_block" = "  Switch current account (also updates defaultAccount)";
+"help_account_show_cmd" = "scl account show <name>";
+"help_account_show_block" = "  Show account details (table output)";
+
+"help_resources_title" = "RESOURCES";
+"help_resources_search_cmd" = "scl resources search [options] <name>";
+"help_resources_search_block" = "  Search resources on Modrinth (interactive colored table by default)\n  Type: explicit or choose in interactive mode\n  Options:\n    --mods / --datapacks / --resourcepacks / --shaders / --modpacks\n    --type <mod|datapack|resourcepack|shader|modpack>\n    --limit <1..100>      result count (auto scales by pageSize)\n    --page <1..N>         page index (for --json / non-interactive)\n    --sort <downloads|follows|title|author>  sort field\n    --order <asc|desc>    sort order\n    --game <instance>     interactive install target\n  Controls:\n    ↑/↓ or j/k select item\n    ←/→ or h/l page (max 12 items)\n    t toggle resource type\n    / edit keyword and search again\n    Enter details / version select / confirm install\n    Esc back\n    q quit\n  Examples:\n    scl resources search --mods sodium\n    scl resources search --type shader complementary";
+"help_resources_install_cmd" = "scl resources install <id> [options]";
+"help_resources_install_block" = "  Download and install resources (modpack uses main app import; others install to instance dir)\n  Options:\n    --mods / --datapacks / --resourcepacks / --shaders / --modpacks (optional)\n    --type <mod|datapack|resourcepack|shader|modpack> (optional)\n    --version <versionId|version_number>  direct specify or choose interactively\n    --game <instance>     required for non-modpack (interactive allowed)\n    --name <filename>     modpack install name (optional)\n  Note:\n    Modpack install requires main app running (import API)\n  Examples:\n    scl resources install AANobbMI --game vanilla-1.20 --type mod\n    scl resources install ogNf4H9E --type modpack --name MyPack";
+"help_resources_list_cmd" = "scl resources list --game <instance> [--type <type>]";
+"help_resources_list_block" = "  List instance resource files (table output)\n  Options:\n    --sort <name|length>  sort field\n    --order <asc|desc>    sort order\n  Example:\n    scl resources list --game vanilla-1.20 --type mod";
+"help_resources_remove_cmd" = "scl resources remove <id|filename> --game <instance> [--type <type>]";
+"help_resources_remove_block" = "  Delete matching resource files\n  Example:\n    scl resources remove sodium --game vanilla-1.20 --type mod";
+
+"help_set_title" = "SET";
+"help_set_kv_cmd" = "scl set <key> <value>";
+"help_set_kv_block" = "  Write config\n  AppStorage keys:\n    aiProvider, aiOllamaBaseURL, aiOpenAIBaseURL, aiModelOverride, aiAvatarURL\n    enableGitHubProxy, gitProxyURL, concurrentDownloads\n    minecraftVersionManifestURL, modrinthAPIBaseURL, curseForgeAPIBaseURL, forgeMavenMirrorURL\n    launcherWorkingDirectory, interfaceLayoutStyle, themeMode\n    globalXms, globalXmx\n    enableAICrashAnalysis, defaultAPISource, includeSnapshotsForGameVersions\n    currentPlayerId\n  Examples:\n    scl set themeMode dark\n    scl set concurrentDownloads 8\n    scl set enableGitHubProxy true";
+"help_set_tui_cmd" = "scl set";
+"help_set_tui_block" = "  Open interactive settings (TUI)";
+"help_set_reset_cmd" = "scl set --reset [<key>]";
+"help_set_reset_block" = "  Reset specific AppStorage key, or all\n  Example:\n    scl set --reset";
+
+"help_get_title" = "GET";
+"help_get_single_cmd" = "scl get <key>";
+"help_get_single_block" = "  Read one AppStorage key\n  Example: scl get themeMode";
+"help_get_all_cmd" = "scl get --all";
+"help_get_all_block" = "  Output all AppStorage keys (21 items)";
+
+"help_uninstall_title" = "UNINSTALL";
+"help_uninstall_cli_cmd" = "scl uninstall cli";
+"help_uninstall_cli_block" = "  Uninstall CLI binary and completion scripts";
+"help_uninstall_app_cmd" = "scl uninstall app";
+"help_uninstall_app_block" = "  Uninstall Swift Craft Launcher.app";
+"help_uninstall_scl_cmd" = "scl uninstall scl";
+"help_uninstall_scl_block" = "  Uninstall CLI and main app";
+
+"help_lang_title" = "LANG";
+"help_lang_list_cmd" = "scl lang list";
+"help_lang_list_block" = "  List built-in and installed languages";
+"help_lang_set_cmd" = "scl lang set <code>";
+"help_lang_set_block" = "  Set language (built-in: zh-Hans / en)";
+"help_lang_show_cmd" = "scl lang show";
+"help_lang_show_block" = "  Show current language";
+"help_lang_path_cmd" = "scl lang path";
+"help_lang_path_block" = "  Show language pack directory";

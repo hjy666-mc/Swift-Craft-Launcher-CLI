@@ -1696,7 +1696,7 @@ func handleLang(args: [String]) {
         }
         print(L("lang_current", code))
     case "path":
-        let path = ""
+        let path = langPackDirPath()
         if jsonOutputEnabled {
             printJSON(["ok": true, "type": "lang", "path": path])
             return

@@ -3,7 +3,7 @@
 "lang_current" = "当前语言: %@";
 "lang_set" = "已设置语言: %@";
 "lang_available" = "可用语言:";
-"lang_pack_dir" = "语言包目录: ~/Library/Application Support/Swift Craft Launcher/lang";
+"lang_pack_dir" = "语言包目录: %@";
 "lang_unknown" = "未知语言: %@";
 
 "help_title" = "Swift Craft Launcher CLI";
@@ -52,3 +52,80 @@
 "help_completion_persist_zsh" = "scl completion zsh";
 "help_completion_persist_bash" = "scl completion bash";
 "help_completion_persist_fish" = "scl completion fish";
+
+"help_game_title" = "GAME 命令";
+"help_game_delete_cmd" = "scl game delete <name>";
+"help_game_delete_block" = "  删除实例目录\n  示例: scl game delete vanilla-1.20";
+"help_game_list_cmd" = "scl game list [--version <keyword>]";
+"help_game_list_block" = "  列出本地实例；交互终端中可上下翻页选择并查看详情\n  选项:\n    --sort <name|length>  排序字段\n    --order <asc|desc>    排序方向\n  示例: scl game list --version 1.20";
+"help_game_status_cmd" = "scl game status [instance]";
+"help_game_status_block" = "  查看实例状态与详情（基础信息、mods、数据包、世界、光影、资源包）\n  兼容别名: scl game stutue [instance]\n  示例:\n    scl game status 1.21.5\n    scl game stutue";
+"help_game_search_cmd" = "scl game search <keyword>";
+"help_game_search_block" = "  按关键字搜索本地实例（表格输出）\n  选项:\n    --sort <name|length>  排序字段\n    --order <asc|desc>    排序方向\n  示例: scl game search fabric";
+"help_game_config_cmd" = "scl game config <instance>";
+"help_game_config_block" = "  查看实例及附加 options 配置（表格输出）\n  示例: scl game config vanilla-1.20";
+"help_game_create_cmd" = "scl game create [options]";
+"help_game_create_block" = "  调用主程序创建实例（不在 CLI 内部重实现下载/安装逻辑）\n  选项:\n    --modloader <vanilla|fabric|forge|neoforge|quilt>\n    --gameversion <version>   例如 1.21.1\n    --name <instance>         实例名\n  说明:\n    未指定上述选项时，在交互终端中通过选择框逐项选择\n  示例:\n    scl game create --modloader fabric --gameversion 1.21.1 --name my-fabric";
+"help_game_launch_cmd" = "scl game launch [instance] [options]";
+"help_game_launch_block" = "  真实启动实例（读取主程序数据库中的启动命令）；未传 instance 时交互选择\n  选项:\n    --memory <value>   如 4G / 6G\n    --java <path>      Java 可执行路径\n    --account <name>   账号名\n  示例:\n    scl game launch vanilla-1.20 --memory 6G --account demoUser";
+"help_game_stop_cmd" = "scl game stop <instance|--all>";
+"help_game_stop_block" = "  真实停止 CLI 启动的实例进程\n  示例:\n    scl game stop vanilla-1.20\n    scl game stop --all";
+"help_game_controls_block" = "交互按键（支持两套）:\n  ↑/↓ 或 j/k 选择\n  ←/→ 或 h/l 翻页（每页最多 12 项）\n  Enter 查看详情/确认\n  Esc 返回\n  q 退出";
+
+"help_account_title" = "ACCOUNT 命令";
+"help_account_list_cmd" = "scl account list";
+"help_account_list_block" = "  列出本地账号（表格输出）";
+"help_account_create_offline_cmd" = "scl account create <username> -offline";
+"help_account_create_offline_block" = "  创建离线账号\n  示例: scl account create demoUser -offline";
+"help_account_create_ms_cmd" = "scl account create -microsoft";
+"help_account_create_ms_block" = "  设备码登录 Microsoft 并添加正版账号（会打开浏览器）";
+"help_account_delete_cmd" = "scl account delete <name>";
+"help_account_delete_block" = "  删除账号";
+"help_account_set_default_cmd" = "scl account set-default <name>";
+"help_account_set_default_block" = "  设为默认账号，并同步到配置项 defaultAccount";
+"help_account_use_cmd" = "scl account use <name>";
+"help_account_use_block" = "  切换当前账号（同时更新 defaultAccount）";
+"help_account_show_cmd" = "scl account show <name>";
+"help_account_show_block" = "  查看账号详情（表格输出）";
+
+"help_resources_title" = "RESOURCES 命令";
+"help_resources_search_cmd" = "scl resources search [options] <name>";
+"help_resources_search_block" = "  在 Modrinth 搜索资源（默认交互式彩色表格）\n  类型: 可显式指定；未指定时在交互模式下会先让你选择\n  选项:\n    --mods / --datapacks / --resourcepacks / --shaders / --modpacks\n    --type <mod|datapack|resourcepack|shader|modpack>\n    --limit <1..100>      搜索结果数量（默认按 pageSize 自动放大）\n    --page <1..N>         结果页码（配合 --json / 非交互输出）\n    --sort <downloads|follows|title|author>  排序字段\n    --order <asc|desc>    排序方向\n    --game <instance>     交互安装目标实例\n  交互按键:\n    ↑/↓ 或 j/k 选择条目\n    ←/→ 或 h/l 翻页（每页最多 12 项）\n    t 切换资源类型\n    / 修改关键词并重新搜索\n    Enter 进入详情 / 进入安装版本选择 / 确认安装\n    Esc 返回上级\n    q 退出\n  示例:\n    scl resources search --mods sodium\n    scl resources search --type shader complementary";
+"help_resources_install_cmd" = "scl resources install <id> [options]";
+"help_resources_install_block" = "  下载并安装资源（modpack 调用主程序导入接口；其他类型安装到实例目录）\n  选项:\n    --mods / --datapacks / --resourcepacks / --shaders / --modpacks（可选，不填则交互选择）\n    --type <mod|datapack|resourcepack|shader|modpack>（可选，不填则交互选择）\n    --version <versionId|version_number>  可直接指定；未指定时进入上下键选择\n    --game <instance>     非 modpack 类型必须指定（可交互选择）\n    --name <filename>     modpack 可指定安装文件名（不填则可交互输入）\n  说明:\n    modpack 安装要求主程序已在运行（用于执行导入接口）\n  示例:\n    scl resources install AANobbMI --game vanilla-1.20 --type mod\n    scl resources install ogNf4H9E --type modpack --name MyPack";
+"help_resources_list_cmd" = "scl resources list --game <instance> [--type <type>]";
+"help_resources_list_block" = "  列出实例资源文件（表格输出）\n  选项:\n    --sort <name|length>  排序字段\n    --order <asc|desc>    排序方向\n  示例:\n    scl resources list --game vanilla-1.20 --type mod";
+"help_resources_remove_cmd" = "scl resources remove <id|filename> --game <instance> [--type <type>]";
+"help_resources_remove_block" = "  删除匹配资源文件\n  示例:\n    scl resources remove sodium --game vanilla-1.20 --type mod";
+
+"help_set_title" = "SET 命令";
+"help_set_kv_cmd" = "scl set <key> <value>";
+"help_set_kv_block" = "  写入配置项\n  AppStorage key:\n    aiProvider, aiOllamaBaseURL, aiOpenAIBaseURL, aiModelOverride, aiAvatarURL\n    enableGitHubProxy, gitProxyURL, concurrentDownloads\n    minecraftVersionManifestURL, modrinthAPIBaseURL, curseForgeAPIBaseURL, forgeMavenMirrorURL\n    launcherWorkingDirectory, interfaceLayoutStyle, themeMode\n    globalXms, globalXmx\n    enableAICrashAnalysis, defaultAPISource, includeSnapshotsForGameVersions\n    currentPlayerId\n  示例:\n    scl set themeMode dark\n    scl set concurrentDownloads 8\n    scl set enableGitHubProxy true";
+"help_set_tui_cmd" = "scl set";
+"help_set_tui_block" = "  无参数进入交互式设置界面（TUI）";
+"help_set_reset_cmd" = "scl set --reset [<key>]";
+"help_set_reset_block" = "  重置指定 AppStorage 配置项，或全部配置\n  示例:\n    scl set --reset";
+
+"help_get_title" = "GET 命令";
+"help_get_single_cmd" = "scl get <key>";
+"help_get_single_block" = "  读取单个 AppStorage 配置项\n  示例: scl get themeMode";
+"help_get_all_cmd" = "scl get --all";
+"help_get_all_block" = "  默认输出本体 AppStorage 全部配置项（21项）";
+
+"help_uninstall_title" = "UNINSTALL 命令";
+"help_uninstall_cli_cmd" = "scl uninstall cli";
+"help_uninstall_cli_block" = "  卸载 CLI 二进制与补全脚本";
+"help_uninstall_app_cmd" = "scl uninstall app";
+"help_uninstall_app_block" = "  卸载 Swift Craft Launcher.app";
+"help_uninstall_scl_cmd" = "scl uninstall scl";
+"help_uninstall_scl_block" = "  同时卸载 CLI 与主程序";
+
+"help_lang_title" = "LANG 命令";
+"help_lang_list_cmd" = "scl lang list";
+"help_lang_list_block" = "  列出内置与已安装语言";
+"help_lang_set_cmd" = "scl lang set <code>";
+"help_lang_set_block" = "  设置语言（内置: zh-Hans / en）";
+"help_lang_show_cmd" = "scl lang show";
+"help_lang_show_block" = "  查看当前语言";
+"help_lang_path_cmd" = "scl lang path";
+"help_lang_path_block" = "  显示语言包目录";

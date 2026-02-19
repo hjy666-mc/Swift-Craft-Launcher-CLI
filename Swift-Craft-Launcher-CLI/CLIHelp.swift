@@ -101,69 +101,33 @@ func printGameHelp() {
         return
     }
     print("""
-\(stylize("GAME 命令", ANSI.bold + ANSI.cyan))
+\(stylize(L("help_game_title"), ANSI.bold + ANSI.cyan))
 
-\(stylize("scl game delete <name>", ANSI.bold + ANSI.blue))
-  删除实例目录
-  示例: scl game delete vanilla-1.20
+\(stylize(L("help_game_delete_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_delete_block"))
 
-\(stylize("scl game list [--version <keyword>]", ANSI.bold + ANSI.blue))
-  列出本地实例；交互终端中可上下翻页选择并查看详情
-  选项:
-    --sort <name|length>  排序字段
-    --order <asc|desc>    排序方向
-  示例: scl game list --version 1.20
+\(stylize(L("help_game_list_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_list_block"))
 
-\(stylize("scl game status [instance]", ANSI.bold + ANSI.blue))
-  查看实例状态与详情（基础信息、mods、数据包、世界、光影、资源包）
-  兼容别名: scl game stutue [instance]
-  示例:
-    scl game status 1.21.5
-    scl game stutue
+\(stylize(L("help_game_status_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_status_block"))
 
-\(stylize("scl game search <keyword>", ANSI.bold + ANSI.blue))
-  按关键字搜索本地实例（表格输出）
-  选项:
-    --sort <name|length>  排序字段
-    --order <asc|desc>    排序方向
-  示例: scl game search fabric
+\(stylize(L("help_game_search_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_search_block"))
 
-\(stylize("scl game config <instance>", ANSI.bold + ANSI.blue))
-  查看实例及附加 options 配置（表格输出）
-  示例: scl game config vanilla-1.20
+\(stylize(L("help_game_config_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_config_block"))
 
-\(stylize("scl game create [options]", ANSI.bold + ANSI.blue))
-  调用主程序创建实例（不在 CLI 内部重实现下载/安装逻辑）
-  选项:
-    --modloader <vanilla|fabric|forge|neoforge|quilt>
-    --gameversion <version>   例如 1.21.1
-    --name <instance>         实例名
-  说明:
-    未指定上述选项时，在交互终端中通过选择框逐项选择
-  示例:
-    scl game create --modloader fabric --gameversion 1.21.1 --name my-fabric
+\(stylize(L("help_game_create_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_create_block"))
 
-\(stylize("scl game launch [instance] [options]", ANSI.bold + ANSI.blue))
-  真实启动实例（读取主程序数据库中的启动命令）；未传 instance 时交互选择
-  选项:
-    --memory <value>   如 4G / 6G
-    --java <path>      Java 可执行路径
-    --account <name>   账号名
-  示例:
-    scl game launch vanilla-1.20 --memory 6G --account demoUser
+\(stylize(L("help_game_launch_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_launch_block"))
 
-\(stylize("scl game stop <instance|--all>", ANSI.bold + ANSI.blue))
-  真实停止 CLI 启动的实例进程
-  示例:
-    scl game stop vanilla-1.20
-    scl game stop --all
+\(stylize(L("help_game_stop_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_stop_block"))
 
-交互按键（支持两套）:
-  ↑/↓ 或 j/k 选择
-  ←/→ 或 h/l 翻页（每页最多 12 项）
-  Enter 查看详情/确认
-  Esc 返回
-  q 退出
+\(L("help_game_controls_block"))
 """)
 }
 
@@ -177,29 +141,28 @@ func printAccountHelp() {
         return
     }
     print("""
-\(stylize("ACCOUNT 命令", ANSI.bold + ANSI.cyan))
+\(stylize(L("help_account_title"), ANSI.bold + ANSI.cyan))
 
-\(stylize("scl account list", ANSI.bold + ANSI.blue))
-  列出本地账号（表格输出）
+\(stylize(L("help_account_list_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_account_list_block"))
 
-\(stylize("scl account create <username> -offline", ANSI.bold + ANSI.blue))
-  创建离线账号
-  示例: scl account create demoUser -offline
+\(stylize(L("help_account_create_offline_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_account_create_offline_block"))
 
-\(stylize("scl account create -microsoft", ANSI.bold + ANSI.blue))
-  设备码登录 Microsoft 并添加正版账号（会打开浏览器）
+\(stylize(L("help_account_create_ms_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_account_create_ms_block"))
 
-\(stylize("scl account delete <name>", ANSI.bold + ANSI.blue))
-  删除账号
+\(stylize(L("help_account_delete_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_account_delete_block"))
 
-\(stylize("scl account set-default <name>", ANSI.bold + ANSI.blue))
-  设为默认账号，并同步到配置项 defaultAccount
+\(stylize(L("help_account_set_default_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_account_set_default_block"))
 
-\(stylize("scl account use <name>", ANSI.bold + ANSI.blue))
-  切换当前账号（同时更新 defaultAccount）
+\(stylize(L("help_account_use_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_account_use_block"))
 
-\(stylize("scl account show <name>", ANSI.bold + ANSI.blue))
-  查看账号详情（表格输出）
+\(stylize(L("help_account_show_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_account_show_block"))
 """)
 }
 
@@ -213,57 +176,19 @@ func printResourcesHelp() {
         return
     }
     print("""
-\(stylize("RESOURCES 命令", ANSI.bold + ANSI.cyan))
+\(stylize(L("help_resources_title"), ANSI.bold + ANSI.cyan))
 
-\(stylize("scl resources search [options] <name>", ANSI.bold + ANSI.blue))
-  在 Modrinth 搜索资源（默认交互式彩色表格）
-  类型: 可显式指定；未指定时在交互模式下会先让你选择
-  选项:
-    --mods / --datapacks / --resourcepacks / --shaders / --modpacks
-    --type <mod|datapack|resourcepack|shader|modpack>
-    --limit <1..100>      搜索结果数量（默认按 pageSize 自动放大）
-    --page <1..N>         结果页码（配合 --json / 非交互输出）
-    --sort <downloads|follows|title|author>  排序字段
-    --order <asc|desc>    排序方向
-    --game <instance>     交互安装目标实例
-  交互按键:
-    ↑/↓ 或 j/k 选择条目
-    ←/→ 或 h/l 翻页（每页最多 12 项）
-    t 切换资源类型
-    / 修改关键词并重新搜索
-    Enter 进入详情 / 进入安装版本选择 / 确认安装
-    Esc 返回上级
-    q 退出
-  示例:
-    scl resources search --mods sodium
-    scl resources search --type shader complementary
+\(stylize(L("help_resources_search_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_resources_search_block"))
 
-\(stylize("scl resources install <id> [options]", ANSI.bold + ANSI.blue))
-  下载并安装资源（modpack 调用主程序导入接口；其他类型安装到实例目录）
-  选项:
-    --mods / --datapacks / --resourcepacks / --shaders / --modpacks（可选，不填则交互选择）
-    --type <mod|datapack|resourcepack|shader|modpack>（可选，不填则交互选择）
-    --version <versionId|version_number>  可直接指定；未指定时进入上下键选择
-    --game <instance>     非 modpack 类型必须指定（可交互选择）
-    --name <filename>     modpack 可指定安装文件名（不填则可交互输入）
-  说明:
-    modpack 安装要求主程序已在运行（用于执行导入接口）
-  示例:
-    scl resources install AANobbMI --game vanilla-1.20 --type mod
-    scl resources install ogNf4H9E --type modpack --name MyPack
+\(stylize(L("help_resources_install_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_resources_install_block"))
 
-\(stylize("scl resources list --game <instance> [--type <type>]", ANSI.bold + ANSI.blue))
-  列出实例资源文件（表格输出）
-  选项:
-    --sort <name|length>  排序字段
-    --order <asc|desc>    排序方向
-  示例:
-    scl resources list --game vanilla-1.20 --type mod
+\(stylize(L("help_resources_list_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_resources_list_block"))
 
-\(stylize("scl resources remove <id|filename> --game <instance> [--type <type>]", ANSI.bold + ANSI.blue))
-  删除匹配资源文件
-  示例:
-    scl resources remove sodium --game vanilla-1.20 --type mod
+\(stylize(L("help_resources_remove_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_resources_remove_block"))
 """)
 }
 
@@ -277,30 +202,16 @@ func printSetHelp() {
         return
     }
     print("""
-\(stylize("SET 命令", ANSI.bold + ANSI.cyan))
+\(stylize(L("help_set_title"), ANSI.bold + ANSI.cyan))
 
-\(stylize("scl set <key> <value>", ANSI.bold + ANSI.blue))
-  写入配置项
-  AppStorage key:
-    aiProvider, aiOllamaBaseURL, aiOpenAIBaseURL, aiModelOverride, aiAvatarURL
-    enableGitHubProxy, gitProxyURL, concurrentDownloads
-    minecraftVersionManifestURL, modrinthAPIBaseURL, curseForgeAPIBaseURL, forgeMavenMirrorURL
-    launcherWorkingDirectory, interfaceLayoutStyle, themeMode
-    globalXms, globalXmx
-    enableAICrashAnalysis, defaultAPISource, includeSnapshotsForGameVersions
-    currentPlayerId
-  示例:
-    scl set themeMode dark
-    scl set concurrentDownloads 8
-    scl set enableGitHubProxy true
+\(stylize(L("help_set_kv_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_set_kv_block"))
 
-\(stylize("scl set", ANSI.bold + ANSI.blue))
-  无参数进入交互式设置界面（TUI）
+\(stylize(L("help_set_tui_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_set_tui_block"))
 
-\(stylize("scl set --reset [<key>]", ANSI.bold + ANSI.blue))
-  重置指定 AppStorage 配置项，或全部配置
-  示例:
-    scl set --reset
+\(stylize(L("help_set_reset_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_set_reset_block"))
 """)
 }
 
@@ -314,14 +225,13 @@ func printGetHelp() {
         return
     }
     print("""
-\(stylize("GET 命令", ANSI.bold + ANSI.cyan))
+\(stylize(L("help_get_title"), ANSI.bold + ANSI.cyan))
 
-\(stylize("scl get <key>", ANSI.bold + ANSI.blue))
-  读取单个 AppStorage 配置项
-  示例: scl get themeMode
+\(stylize(L("help_get_single_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_get_single_block"))
 
-\(stylize("scl get --all", ANSI.bold + ANSI.blue))
-  默认输出本体 AppStorage 全部配置项（21项）
+\(stylize(L("help_get_all_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_get_all_block"))
 """)
 }
 
@@ -335,16 +245,16 @@ func printUninstallHelp() {
         return
     }
     print("""
-\(stylize("UNINSTALL 命令", ANSI.bold + ANSI.cyan))
+\(stylize(L("help_uninstall_title"), ANSI.bold + ANSI.cyan))
 
-\(stylize("scl uninstall cli", ANSI.bold + ANSI.blue))
-  卸载 CLI 二进制与补全脚本
+\(stylize(L("help_uninstall_cli_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_uninstall_cli_block"))
 
-\(stylize("scl uninstall app", ANSI.bold + ANSI.blue))
-  卸载 Swift Craft Launcher.app
+\(stylize(L("help_uninstall_app_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_uninstall_app_block"))
 
-\(stylize("scl uninstall scl", ANSI.bold + ANSI.blue))
-  同时卸载 CLI 与主程序
+\(stylize(L("help_uninstall_scl_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_uninstall_scl_block"))
 """)
 }
 
@@ -358,18 +268,18 @@ func printLangHelp() {
         return
     }
     print("""
-\(stylize("LANG 命令", ANSI.bold + ANSI.cyan))
+\(stylize(L("help_lang_title"), ANSI.bold + ANSI.cyan))
 
-\(stylize("scl lang list", ANSI.bold + ANSI.blue))
-  列出内置与已安装语言
+\(stylize(L("help_lang_list_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_lang_list_block"))
 
-\(stylize("scl lang set <code>", ANSI.bold + ANSI.blue))
-  设置语言（内置: zh / en；其他来自语言包）
+\(stylize(L("help_lang_set_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_lang_set_block"))
 
-\(stylize("scl lang show", ANSI.bold + ANSI.blue))
-  查看当前语言
+\(stylize(L("help_lang_show_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_lang_show_block"))
 
-\(stylize("scl lang path", ANSI.bold + ANSI.blue))
-  显示语言包目录
+\(stylize(L("help_lang_path_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_lang_path_block"))
 """)
 }
