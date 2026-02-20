@@ -12,14 +12,20 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Copy and Strip
+    - name: Build Release
       run: |
-        mkdir -p dist
-        cp build/Build/Products/Release/Swift-Craft-Launcher-CLI dist/scl
-        cp -R build/Build/Products/Release/en.lproj dist/
-        cp -R build/Build/Products/Release/zh-Hans.lproj dist/
-        strip dist/scl
-        ls -lh dist/scl
+        set -e
+        xcodebuild \
+          -project Swift-Craft-Launcher-CLI.xcodeproj \
+          -scheme Swift-Craft-Launcher-CLI \
+          -configuration Release \
+          -derivedDataPath build \
+          build
+
+    - name: Debug build output
+      run: |
+        ls -la build/Build/Products/Release || true
+        find build -type f -name "Swift-Craft-Launcher-CLI" || true
 
     - name: Copy and Strip
       run: |
