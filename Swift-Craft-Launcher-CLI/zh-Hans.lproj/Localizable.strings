@@ -6,6 +6,8 @@
 "lang_pack_dir" = "语言包目录: %@";
 "lang_unknown" = "未知语言: %@";
 
+"page_format" = "第 %@/%@ 页";
+
 "help_title" = "Swift Craft Launcher CLI";
 "help_subtitle" = "Minecraft 启动器的现代化命令行工具";
 "help_syntax_title" = "基础语法";

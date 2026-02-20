@@ -23,7 +23,7 @@ func handleCompletion(args: [String]) {
         case "fish":
             print(fishCompletionScript())
         default:
-            fail("不支持的 shell: \(shell)，请使用 zsh/bash/fish")
+            fail(L("不支持的 shell: %@，请使用 zsh/bash/fish", shell))
         }
         return
     }
@@ -36,7 +36,7 @@ func handleCompletion(args: [String]) {
     case "fish":
         installFishCompletion()
     default:
-        fail("不支持的 shell: \(shell)，请使用 zsh/bash/fish")
+        fail(L("不支持的 shell: %@，请使用 zsh/bash/fish", shell))
     }
 }
 
@@ -49,7 +49,7 @@ private func installZshCompletion() {
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         try zshCompletionScript().write(to: scriptPath, atomically: true, encoding: .utf8)
     } catch {
-        fail("安装 zsh 补全失败: \(error.localizedDescription)")
+        fail(L("安装 zsh 补全失败: %@", error.localizedDescription))
         return
     }
 
@@ -57,7 +57,7 @@ private func installZshCompletion() {
     let marker = "# scl completion"
     let block = "\n\(marker)\n# ensure our completion dir is first in fpath\nfpath=(\"$HOME/.zsh/completions\" ${fpath:#\"$HOME/.zsh/completions\"})\nautoload -Uz compinit && compinit -u\nsource \"$HOME/.zsh/completions/_scl_cli\" 2>/dev/null\ncompdef _scl_cli scl\nzstyle ':completion:*' menu select\nbindkey '^I' menu-complete\n"
     appendBlockIfMissing(fileURL: rcPath, marker: marker, block: block)
-    success("已安装 zsh 补全: \(scriptPath.path)\n请新开终端或执行: source ~/.zshrc")
+    success(L("已安装 zsh 补全: %@\n请新开终端或执行: source ~/.zshrc", scriptPath.path))
 }
 
 private func installBashCompletion() {
@@ -69,7 +69,7 @@ private func installBashCompletion() {
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         try bashCompletionScript().write(to: scriptPath, atomically: true, encoding: .utf8)
     } catch {
-        fail("安装 bash 补全失败: \(error.localizedDescription)")
+        fail(L("安装 bash 补全失败: %@", error.localizedDescription))
         return
     }
 
@@ -77,7 +77,7 @@ private func installBashCompletion() {
     let marker = "# scl completion"
     let block = "\n\(marker)\nif [ -f \"$HOME/.bash_completion.d/scl\" ]; then\n  source \"$HOME/.bash_completion.d/scl\"\nfi\n"
     appendBlockIfMissing(fileURL: rcPath, marker: marker, block: block)
-    success("已安装 bash 补全: \(scriptPath.path)\n请新开终端或执行: source ~/.bashrc")
+    success(L("已安装 bash 补全: %@\n请新开终端或执行: source ~/.bashrc", scriptPath.path))
 }
 
 private func installFishCompletion() {
@@ -89,10 +89,10 @@ private func installFishCompletion() {
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         try fishCompletionScript().write(to: scriptPath, atomically: true, encoding: .utf8)
     } catch {
-        fail("安装 fish 补全失败: \(error.localizedDescription)")
+        fail(L("安装 fish 补全失败: %@", error.localizedDescription))
         return
     }
-    success("已安装 fish 补全: \(scriptPath.path)\n请新开终端")
+    success(L("已安装 fish 补全: %@\n请新开终端", scriptPath.path))
 }
 
 private func appendBlockIfMissing(fileURL: URL, marker: String, block: String) {
@@ -127,17 +127,17 @@ func handleMan(args: [String]) {
             try fm.createDirectory(at: targetDir, withIntermediateDirectories: true)
             let targetFile = targetDir.appendingPathComponent("scl.1")
             try content.write(to: targetFile, atomically: true, encoding: .utf8)
-            success("已安装 man 手册: \(targetFile.path)")
+            success(L("已安装 man 手册: %@", targetFile.path))
             if installToUser {
-                print("请确保 MANPATH 包含 ~/.local/share/man，例如:")
+                print(localizeText("请确保 MANPATH 包含 ~/.local/share/man，例如:"))
                 print("  export MANPATH=\"$HOME/.local/share/man:$MANPATH\"")
             } else {
-                print("现在可直接运行: man scl")
+                print(localizeText("现在可直接运行: man scl"))
             }
         } catch {
-            fail("安装 man 手册失败: \(error.localizedDescription)")
+            fail(L("安装 man 手册失败: %@", error.localizedDescription))
             if !installToUser {
-                print("可改用: scl man --install --user")
+                print(localizeText("可改用: scl man --install --user"))
             }
         }
         return
@@ -351,7 +351,16 @@ Swift Craft Launcher project.
 }
 
 func zshCompletionScript() -> String {
-    """
+    let descSet = localizeText("设置配置")
+    let descGet = localizeText("读取配置")
+    let descGame = localizeText("游戏实例管理")
+    let descAccount = localizeText("账号管理")
+    let descResources = localizeText("资源管理")
+    let descCompletion = localizeText("生成补全脚本")
+    let descLang = localizeText("语言设置")
+    let descOpen = localizeText("打开主程序")
+    let descUninstall = localizeText("卸载组件")
+    return """
     #compdef scl
 
     _scl_cli() {
@@ -360,15 +369,15 @@ func zshCompletionScript() -> String {
 
       local -a groups
       groups=(
-        'set:设置配置'
-        'get:读取配置'
-        'game:游戏实例管理'
-        'account:账号管理'
-        'resources:资源管理'
-        'completion:生成补全脚本'
-        'lang:语言设置'
-        'open:打开主程序'
-        'uninstall:卸载组件'
+        'set:\(descSet)'
+        'get:\(descGet)'
+        'game:\(descGame)'
+        'account:\(descAccount)'
+        'resources:\(descResources)'
+        'completion:\(descCompletion)'
+        'lang:\(descLang)'
+        'open:\(descOpen)'
+        'uninstall:\(descUninstall)'
       )
 
       if (( CURRENT == 2 )); then
@@ -514,17 +523,26 @@ func bashCompletionScript() -> String {
 }
 
 func fishCompletionScript() -> String {
-    """
+    let descSet = localizeText("设置配置")
+    let descGet = localizeText("读取配置")
+    let descGame = localizeText("游戏实例管理")
+    let descAccount = localizeText("账号管理")
+    let descResources = localizeText("资源管理")
+    let descCompletion = localizeText("生成补全脚本")
+    let descLang = localizeText("语言设置")
+    let descOpen = localizeText("打开主程序")
+    let descUninstall = localizeText("卸载组件")
+    return """
     complete -c scl -f
-    complete -c scl -n '__fish_use_subcommand' -a set -d '设置配置'
-    complete -c scl -n '__fish_use_subcommand' -a get -d '读取配置'
-    complete -c scl -n '__fish_use_subcommand' -a game -d '游戏实例管理'
-    complete -c scl -n '__fish_use_subcommand' -a account -d '账号管理'
-    complete -c scl -n '__fish_use_subcommand' -a resources -d '资源管理'
-    complete -c scl -n '__fish_use_subcommand' -a completion -d '生成补全脚本'
-    complete -c scl -n '__fish_use_subcommand' -a lang -d '语言设置'
-    complete -c scl -n '__fish_use_subcommand' -a open -d '打开主程序'
-    complete -c scl -n '__fish_use_subcommand' -a uninstall -d '卸载组件'
+    complete -c scl -n '__fish_use_subcommand' -a set -d '\(descSet)'
+    complete -c scl -n '__fish_use_subcommand' -a get -d '\(descGet)'
+    complete -c scl -n '__fish_use_subcommand' -a game -d '\(descGame)'
+    complete -c scl -n '__fish_use_subcommand' -a account -d '\(descAccount)'
+    complete -c scl -n '__fish_use_subcommand' -a resources -d '\(descResources)'
+    complete -c scl -n '__fish_use_subcommand' -a completion -d '\(descCompletion)'
+    complete -c scl -n '__fish_use_subcommand' -a lang -d '\(descLang)'
+    complete -c scl -n '__fish_use_subcommand' -a open -d '\(descOpen)'
+    complete -c scl -n '__fish_use_subcommand' -a uninstall -d '\(descUninstall)'
 
     complete -c scl -n '__fish_seen_subcommand_from game' -a 'list status stutue search config create launch stop delete'
     complete -c scl -n '__fish_seen_subcommand_from account' -a 'list create delete set-default use show'

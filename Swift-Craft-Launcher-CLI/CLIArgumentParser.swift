@@ -1,7 +1,7 @@
 import ArgumentParser
 
 struct GlobalOptions: ParsableArguments {
-    @Flag(name: .long, help: "以 JSON 格式输出")
+    @Flag(name: .long, help: ArgumentHelp(localizeText("以 JSON 格式输出")))
     var json = false
 }
 
@@ -41,7 +41,7 @@ struct SCL: ParsableCommand {
 }
 
 struct SetCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "set", abstract: "设置配置项")
+    static let configuration = CommandConfiguration(commandName: "set", abstract: localizeText("设置配置项"))
     @OptionGroup var global: GlobalOptions
     @Argument(parsing: .captureForPassthrough) var args: [String] = []
 
@@ -52,7 +52,7 @@ struct SetCommand: ParsableCommand {
 }
 
 struct GetCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "get", abstract: "读取配置项")
+    static let configuration = CommandConfiguration(commandName: "get", abstract: localizeText("读取配置项"))
     @OptionGroup var global: GlobalOptions
     @Argument(parsing: .captureForPassthrough) var args: [String] = []
 
@@ -65,14 +65,14 @@ struct GetCommand: ParsableCommand {
 struct GameCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "game",
-        abstract: "游戏实例管理",
+        abstract: localizeText("游戏实例管理"),
         subcommands: [GameList.self, GameStatus.self, GameSearch.self, GameConfig.self, GameCreate.self, GameLaunch.self, GameStop.self, GameDelete.self]
     )
     @OptionGroup var global: GlobalOptions
 }
 
 struct GameList: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "list", abstract: "列出实例")
+    static let configuration = CommandConfiguration(commandName: "list", abstract: localizeText("列出实例"))
     @OptionGroup var global: GlobalOptions
     @Option(name: .long) var version: String?
     @Option(name: .long) var sort: String?
@@ -89,7 +89,7 @@ struct GameList: ParsableCommand {
 }
 
 struct GameStatus: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "status", abstract: "查看实例状态")
+    static let configuration = CommandConfiguration(commandName: "status", abstract: localizeText("查看实例状态"))
     @OptionGroup var global: GlobalOptions
     @Argument var instance: String?
 
@@ -102,7 +102,7 @@ struct GameStatus: ParsableCommand {
 }
 
 struct GameSearch: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "search", abstract: "搜索实例")
+    static let configuration = CommandConfiguration(commandName: "search", abstract: localizeText("搜索实例"))
     @OptionGroup var global: GlobalOptions
     @Argument var keyword: String
     @Option(name: .long) var sort: String?
@@ -118,7 +118,7 @@ struct GameSearch: ParsableCommand {
 }
 
 struct GameConfig: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "config", abstract: "查看实例配置")
+    static let configuration = CommandConfiguration(commandName: "config", abstract: localizeText("查看实例配置"))
     @OptionGroup var global: GlobalOptions
     @Argument var instance: String
 
@@ -129,7 +129,7 @@ struct GameConfig: ParsableCommand {
 }
 
 struct GameCreate: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "create", abstract: "创建实例")
+    static let configuration = CommandConfiguration(commandName: "create", abstract: localizeText("创建实例"))
     @OptionGroup var global: GlobalOptions
     @Option(name: .long) var modloader: String?
     @Option(name: .long) var gameversion: String?
@@ -146,7 +146,7 @@ struct GameCreate: ParsableCommand {
 }
 
 struct GameLaunch: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "launch", abstract: "启动实例")
+    static let configuration = CommandConfiguration(commandName: "launch", abstract: localizeText("启动实例"))
     @OptionGroup var global: GlobalOptions
     @Argument var instance: String?
     @Option(name: .long) var memory: String?
@@ -165,7 +165,7 @@ struct GameLaunch: ParsableCommand {
 }
 
 struct GameStop: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "stop", abstract: "停止实例")
+    static let configuration = CommandConfiguration(commandName: "stop", abstract: localizeText("停止实例"))
     @OptionGroup var global: GlobalOptions
     @Argument var instance: String?
     @Flag(name: .long) var all = false
@@ -180,7 +180,7 @@ struct GameStop: ParsableCommand {
 }
 
 struct GameDelete: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "delete", abstract: "删除实例")
+    static let configuration = CommandConfiguration(commandName: "delete", abstract: localizeText("删除实例"))
     @OptionGroup var global: GlobalOptions
     @Argument var name: String
 
@@ -193,14 +193,14 @@ struct GameDelete: ParsableCommand {
 struct AccountCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "account",
-        abstract: "账号管理",
+        abstract: localizeText("账号管理"),
         subcommands: [AccountList.self, AccountCreate.self, AccountDelete.self, AccountSetDefault.self, AccountUse.self, AccountShow.self]
     )
     @OptionGroup var global: GlobalOptions
 }
 
 struct AccountList: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "list", abstract: "列出账号")
+    static let configuration = CommandConfiguration(commandName: "list", abstract: localizeText("列出账号"))
     @OptionGroup var global: GlobalOptions
     mutating func run() throws {
         applyGlobal(global)
@@ -209,7 +209,7 @@ struct AccountList: ParsableCommand {
 }
 
 struct AccountCreate: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "create", abstract: "创建账号")
+    static let configuration = CommandConfiguration(commandName: "create", abstract: localizeText("创建账号"))
     @OptionGroup var global: GlobalOptions
     @Argument var username: String?
     @Flag(name: .customLong("offline", withSingleDash: true)) var offline = false
@@ -226,7 +226,7 @@ struct AccountCreate: ParsableCommand {
 }
 
 struct AccountDelete: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "delete", abstract: "删除账号")
+    static let configuration = CommandConfiguration(commandName: "delete", abstract: localizeText("删除账号"))
     @OptionGroup var global: GlobalOptions
     @Argument var name: String
     mutating func run() throws {
@@ -236,7 +236,7 @@ struct AccountDelete: ParsableCommand {
 }
 
 struct AccountSetDefault: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "set-default", abstract: "设置默认账号")
+    static let configuration = CommandConfiguration(commandName: "set-default", abstract: localizeText("设置默认账号"))
     @OptionGroup var global: GlobalOptions
     @Argument var name: String
     mutating func run() throws {
@@ -246,7 +246,7 @@ struct AccountSetDefault: ParsableCommand {
 }
 
 struct AccountUse: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "use", abstract: "切换当前账号")
+    static let configuration = CommandConfiguration(commandName: "use", abstract: localizeText("切换当前账号"))
     @OptionGroup var global: GlobalOptions
     @Argument var name: String
     mutating func run() throws {
@@ -256,7 +256,7 @@ struct AccountUse: ParsableCommand {
 }
 
 struct AccountShow: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "show", abstract: "查看账号")
+    static let configuration = CommandConfiguration(commandName: "show", abstract: localizeText("查看账号"))
     @OptionGroup var global: GlobalOptions
     @Argument var name: String
     mutating func run() throws {
@@ -268,14 +268,14 @@ struct AccountShow: ParsableCommand {
 struct ResourcesCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "resources",
-        abstract: "资源管理",
+        abstract: localizeText("资源管理"),
         subcommands: [ResourcesSearch.self, ResourcesInstall.self, ResourcesList.self, ResourcesRemove.self]
     )
     @OptionGroup var global: GlobalOptions
 }
 
 struct ResourcesSearch: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "search", abstract: "搜索资源")
+    static let configuration = CommandConfiguration(commandName: "search", abstract: localizeText("搜索资源"))
     @OptionGroup var global: GlobalOptions
     @Argument var keyword: String
     @Flag(name: .long) var mods = false
@@ -309,7 +309,7 @@ struct ResourcesSearch: ParsableCommand {
 }
 
 struct ResourcesInstall: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "install", abstract: "安装资源")
+    static let configuration = CommandConfiguration(commandName: "install", abstract: localizeText("安装资源"))
     @OptionGroup var global: GlobalOptions
     @Argument var id: String
     @Flag(name: .long) var mods = false
@@ -339,7 +339,7 @@ struct ResourcesInstall: ParsableCommand {
 }
 
 struct ResourcesList: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "list", abstract: "列出资源")
+    static let configuration = CommandConfiguration(commandName: "list", abstract: localizeText("列出资源"))
     @OptionGroup var global: GlobalOptions
     @Option(name: .long) var game: String?
     @Option(name: .long) var type: String?
@@ -358,7 +358,7 @@ struct ResourcesList: ParsableCommand {
 }
 
 struct ResourcesRemove: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "remove", abstract: "删除资源")
+    static let configuration = CommandConfiguration(commandName: "remove", abstract: localizeText("删除资源"))
     @OptionGroup var global: GlobalOptions
     @Argument var idOrFilename: String
     @Option(name: .long) var game: String?
@@ -374,10 +374,10 @@ struct ResourcesRemove: ParsableCommand {
 }
 
 struct CompletionCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "completion", abstract: "生成 shell 补全脚本")
+    static let configuration = CommandConfiguration(commandName: "completion", abstract: localizeText("生成 shell 补全脚本"))
     @OptionGroup var global: GlobalOptions
     @Argument var shell: CompletionShell?
-    @Flag(name: .long, help: "仅输出补全脚本到 stdout") var printOnly = false
+    @Flag(name: .long, help: ArgumentHelp(localizeText("仅输出补全脚本到 stdout"))) var printOnly = false
 
     mutating func run() throws {
         applyGlobal(global)
@@ -389,7 +389,7 @@ struct CompletionCommand: ParsableCommand {
 }
 
 struct ManCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "man", abstract: "查看/安装 man 手册")
+    static let configuration = CommandConfiguration(commandName: "man", abstract: localizeText("查看/安装 man 手册"))
     @OptionGroup var global: GlobalOptions
     @Flag(name: .long) var install = false
     @Flag(name: .long) var user = false
@@ -406,14 +406,14 @@ struct ManCommand: ParsableCommand {
 struct LangCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "lang",
-        abstract: "语言设置",
+        abstract: localizeText("语言设置"),
         subcommands: [LangList.self, LangSet.self, LangShow.self, LangPath.self]
     )
     @OptionGroup var global: GlobalOptions
 }
 
 struct LangList: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "list", abstract: "列出可用语言")
+    static let configuration = CommandConfiguration(commandName: "list", abstract: localizeText("列出可用语言"))
     @OptionGroup var global: GlobalOptions
     mutating func run() throws {
         applyGlobal(global)
@@ -422,7 +422,7 @@ struct LangList: ParsableCommand {
 }
 
 struct LangSet: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "set", abstract: "切换语言")
+    static let configuration = CommandConfiguration(commandName: "set", abstract: localizeText("切换语言"))
     @OptionGroup var global: GlobalOptions
     @Argument var code: String
     mutating func run() throws {
@@ -432,7 +432,7 @@ struct LangSet: ParsableCommand {
 }
 
 struct LangShow: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "show", abstract: "查看当前语言")
+    static let configuration = CommandConfiguration(commandName: "show", abstract: localizeText("查看当前语言"))
     @OptionGroup var global: GlobalOptions
     mutating func run() throws {
         applyGlobal(global)
@@ -441,7 +441,7 @@ struct LangShow: ParsableCommand {
 }
 
 struct LangPath: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "path", abstract: "语言包目录")
+    static let configuration = CommandConfiguration(commandName: "path", abstract: localizeText("语言包目录"))
     @OptionGroup var global: GlobalOptions
     mutating func run() throws {
         applyGlobal(global)
@@ -450,7 +450,7 @@ struct LangPath: ParsableCommand {
 }
 
 struct OpenCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "open", abstract: "打开主程序")
+    static let configuration = CommandConfiguration(commandName: "open", abstract: localizeText("打开主程序"))
     @OptionGroup var global: GlobalOptions
 
     mutating func run() throws {
@@ -460,7 +460,7 @@ struct OpenCommand: ParsableCommand {
 }
 
 struct UninstallCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "uninstall", abstract: "卸载组件")
+    static let configuration = CommandConfiguration(commandName: "uninstall", abstract: localizeText("卸载组件"))
     @OptionGroup var global: GlobalOptions
     @Argument var target: UninstallTarget?
 
@@ -569,7 +569,7 @@ private func runShellCommand(_ line: String) {
 }
 
 struct ShellCommand: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "shell", abstract: "进入交互式 sclshell")
+    static let configuration = CommandConfiguration(commandName: "shell", abstract: localizeText("进入交互式 sclshell"))
     @OptionGroup var global: GlobalOptions
 
     mutating func run() throws {

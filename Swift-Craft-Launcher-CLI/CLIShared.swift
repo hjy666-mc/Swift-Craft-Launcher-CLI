@@ -234,8 +234,9 @@ let colorEnabled: Bool = {
 }()
 
 func stylize(_ text: String, _ code: String) -> String {
-    guard colorEnabled && !jsonOutputEnabled else { return text }
-    return code + text + ANSI.reset
+    let localized = localizeIfKey(text)
+    guard colorEnabled && !jsonOutputEnabled else { return localized }
+    return code + localized + ANSI.reset
 }
 
 func printJSON(_ value: Any) {
@@ -249,37 +250,45 @@ func printJSON(_ value: Any) {
     print(text)
 }
 
+private func localizeIfKey(_ text: String) -> String {
+    return localizeText(text)
+}
+
 func success(_ text: String) {
+    let localized = localizeIfKey(text)
     if jsonOutputEnabled {
-        printJSON(["ok": true, "level": "success", "message": text])
+        printJSON(["ok": true, "level": "success", "message": localized])
         return
     }
-    print(stylize("✓ \(text)", ANSI.green))
+    print(stylize("✓ \(localized)", ANSI.green))
 }
 
 func info(_ text: String) {
+    let localized = localizeIfKey(text)
     if jsonOutputEnabled {
-        printJSON(["ok": true, "level": "info", "message": text])
+        printJSON(["ok": true, "level": "info", "message": localized])
         return
     }
-    print(stylize(text, ANSI.cyan))
+    print(stylize(localized, ANSI.cyan))
 }
 
 func warn(_ text: String) {
+    let localized = localizeIfKey(text)
     if jsonOutputEnabled {
-        printJSON(["ok": true, "level": "warn", "message": text])
+        printJSON(["ok": true, "level": "warn", "message": localized])
         return
     }
-    fputs(stylize("⚠ \(text)\n", ANSI.yellow), stderr)
+    fputs(stylize("⚠ \(localized)\n", ANSI.yellow), stderr)
 }
 
 func fail(_ text: String) {
     setExitCode(1)
+    let localized = localizeIfKey(text)
     if jsonOutputEnabled {
-        printJSON(["ok": false, "level": "error", "message": text])
+        printJSON(["ok": false, "level": "error", "message": localized])
         return
     }
-    fputs(stylize("✗ \(text)\n", ANSI.red), stderr)
+    fputs(stylize("✗ \(localized)\n", ANSI.red), stderr)
 }
 
 func setExitCode(_ code: Int) {
@@ -2166,12 +2175,12 @@ func setAppStorageValue(key: String, value: String) -> String? {
             defaults.set(value, forKey: key)
         case .bool:
             guard let boolValue else {
-                return "\(key) 只能是 true/false"
+                return L("%@ 只能是 true/false", key)
             }
             defaults.set(boolValue, forKey: key)
         case .int:
             guard let intValue else {
-                return "\(key) 需要整数值"
+                return L("%@ 需要整数值", key)
             }
             defaults.set(intValue, forKey: key)
         }
