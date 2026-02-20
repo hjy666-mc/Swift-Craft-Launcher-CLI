@@ -1,0 +1,37 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build Release
+      run: |
+        xcodebuild \
+          -project Swift-Craft-Launcher-CLI.xcodeproj \
+          -scheme Swift-Craft-Launcher-CLI \
+          -configuration Release \
+          -derivedDataPath build \
+          build
+
+    - name: Copy and Strip
+      run: |
+        cp build/Build/Products/Release/Swift-Craft-Launcher-CLI scl
+        echo "Before strip:"
+        ls -lh scl
+        strip scl
+        echo "After strip:"
+        ls -lh scl
+
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: scl
+        path: scl
