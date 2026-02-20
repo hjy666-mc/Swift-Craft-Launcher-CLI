@@ -29,12 +29,24 @@ jobs:
 
     - name: Copy and Strip
       run: |
-        cp build/Build/Products/Release/Swift-Craft-Launcher-CLI scl
+        BIN_PATH=$(find build -type f -name "Swift-Craft-Launcher-CLI" | head -1)
+        if [[ -z "$BIN_PATH" ]]; then
+          echo "❌ Binary not found"
+          exit 1
+        fi
+        mkdir -p dist
+        cp "$BIN_PATH" dist/scl
+        if [[ -d "build/Build/Products/Release/en.lproj" ]]; then
+          cp -R "build/Build/Products/Release/en.lproj" dist/
+        fi
+        if [[ -d "build/Build/Products/Release/zh-Hans.lproj" ]]; then
+          cp -R "build/Build/Products/Release/zh-Hans.lproj" dist/
+        fi
         echo "Before strip:"
-        ls -lh scl
-        strip scl
+        ls -lh dist/scl
+        strip dist/scl
         echo "After strip:"
-        ls -lh scl
+        ls -lh dist/scl
 
     - name: Upload
       uses: actions/upload-artifact@v4
