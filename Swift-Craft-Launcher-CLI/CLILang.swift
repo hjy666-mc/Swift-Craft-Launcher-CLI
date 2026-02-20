@@ -97,6 +97,20 @@ func localizeText(_ text: String) -> String {
     if let exact = lookupString(text) { return exact }
     guard containsCJK(text) else { return text }
 
+    if let loaderFormat = lookupString("loader_info_missing_format") {
+        if let regex = try? NSRegularExpression(pattern: #"获取\s*(.+?)\s*加载器信息失败（该 MC 版本可能暂无 Loader：(.+)）"#) {
+            let ns = text as NSString
+            let range = NSRange(location: 0, length: ns.length)
+            if let match = regex.firstMatch(in: text, range: range), match.numberOfRanges == 3 {
+                let loader = ns.substring(with: match.range(at: 1))
+                let version = ns.substring(with: match.range(at: 2))
+                return String(format: loaderFormat, loader, version)
+            }
+        }
+    }
+
+    var result = text
+
     let prefixKeys = [
         "用法错误", "缺少", "未知配置项", "已重置", "已设置", "已取消启动",
         "实例不存在", "实例已存在", "实例目录不存在", "未找到实例启动记录",
@@ -122,28 +136,40 @@ func localizeText(_ text: String) -> String {
         "正版账号 Token 刷新失败，使用离线模式启动",
         "创建超时：主程序未在限定时间内返回结果",
         "登录超时：主程序未在限定时间内返回结果",
-        "导入超时：主程序未在限定时间内返回结果"
+        "导入超时：主程序未在限定时间内返回结果",
+        "Java 路径为空或不可执行", "SHA1 校验失败", "processor 执行失败", "processor 缺少 jar",
+        "下载依赖失败", "下载失败", "下载客户端失败", "下载资源文件失败", "下载资源索引失败",
+        "创建目录失败", "刷新令牌失败", "无效的 HTTP 响应",
+        "无法下载处理器依赖", "无法下载版本详情", "无法创建目录",
+        "无法获取可选游戏版本", "无法获取版本列表或未找到版本",
+        "登录已过期，请重新登录该账户", "登录超时，请重试",
+        "设备码已过期，请重新登录", "该账户未购买 Minecraft",
+        "请求失败: HTTP", "解析版本详情失败", "解析资源索引失败",
+        "获取 Fabric 加载器信息失败（该 MC 版本可能暂无 Fabric Loader：",
+        "获取 Quilt 加载器信息失败（该 MC 版本可能暂无 Quilt Loader：",
+        "当前 CLI 本地创建仅支持", "缺少 Microsoft Client ID",
+        "获取 Minecraft 访问令牌失败", "请在浏览器中完成 Microsoft 登录"
     ]
     for key in prefixKeys {
         if text.hasPrefix(key), let translated = lookupString(key) {
             let rest = text.dropFirst(key.count)
-            return translated + rest
+            result = translated + rest
+            break
         }
     }
 
     let separators = ["：", ":"]
     for sep in separators {
-        if let range = text.range(of: sep) {
-            let left = text[..<range.lowerBound].trimmingCharacters(in: .whitespaces)
-            let right = text[range.upperBound...].trimmingCharacters(in: .whitespaces)
+        if let range = result.range(of: sep) {
+            let left = result[..<range.lowerBound].trimmingCharacters(in: .whitespaces)
+            let right = result[range.upperBound...].trimmingCharacters(in: .whitespaces)
             if let translatedLeft = lookupString(String(left)) {
                 let translatedRight = lookupString(String(right)) ?? String(right)
-                return "\(translatedLeft)\(sep) \(translatedRight)"
+                result = "\(translatedLeft)\(sep) \(translatedRight)"
+                break
             }
         }
     }
-
-    var result = text
     let labelKeys = [
         "关键词", "类型", "目标实例", "实例", "实例详情", "项目", "过滤条件",
         "版本", "加载器", "资源", "资源类型", "第", "页", "解压目录", "清单已写入",
@@ -182,7 +208,8 @@ func localizeText(_ text: String) -> String {
         "索引文件解析失败（可能格式不支持，未安装）", "索引文件解析失败（可能格式不支持）",
         "解压文件列表", "版本文件列表",
         "设置中心", "设置 ", "（当前: ", "）",
-        "已移除", "未移除", "未找到", "（", "）", "个实例", "<未选择>"
+        "已移除", "未移除", "未找到", "（", "）", "个实例", "<未选择>",
+        "不支持的加载器", "JSON 结构与预期不符", "无效 --modloader"
     ]
     for key in phraseKeys {
         if let translated = lookupString(key) {

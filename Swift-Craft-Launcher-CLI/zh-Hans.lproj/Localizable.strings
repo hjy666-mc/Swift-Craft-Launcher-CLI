@@ -7,6 +7,7 @@
 "lang_unknown" = "未知语言: %@";
 
 "page_format" = "第 %@/%@ 页";
+"loader_info_missing_format" = "获取 %@ 加载器信息失败（该 MC 版本可能暂无 Loader：%@）";
 
 "help_title" = "Swift Craft Launcher CLI";
 "help_subtitle" = "Minecraft 启动器的现代化命令行工具";
