@@ -677,8 +677,8 @@ based on this software, you must:
 
   2. If you create a modified version, you must clearly mark it as such
      and prominently indicate:
-     - That the software is based on Swift Craft Launcher
-     - The original project source (https://github.com/suhang12332/Swift-Craft-Launcher)
+     - That the software is based on Swift Craft Launcher CLI
+     - The original project source (https://github.com/hjy666-mc/Swift-Craft-Launcher-CLI)
      - The modifications you have made (if applicable)
 
   3. When distributing this software or modified versions, you must:
