@@ -99,7 +99,7 @@ private func runDownload(_ url: URL) -> Data? {
     // curl fallback
     let curlData = runCurlDownload(url: url)
     if curlData == nil {
-        fputs("下载失败 \(url): \(errorText ?? "unknown")\n", stderr)
+        fputs("\(L("下载失败 %@: %@", url.absoluteString, errorText ?? "unknown"))\n", stderr)
     }
     return curlData
 }
@@ -125,7 +125,7 @@ private func downloadToFile(url: URL, dest: URL, expectedSha1: String?) -> Strin
     let fm = FileManager.default
     do {
         try fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
-    } catch { return "无法创建目录: \(error.localizedDescription)" }
+    } catch { return L("无法创建目录: %@", error.localizedDescription) }
     let sem = DispatchSemaphore(value: 0)
     var err: String?
     Task {
@@ -136,7 +136,7 @@ private func downloadToFile(url: URL, dest: URL, expectedSha1: String?) -> Strin
                 let data = try Data(contentsOf: tmp)
                 let actual = sha1Hex(data)
                 if actual.lowercased() != expected.lowercased() {
-                    err = "SHA1 校验失败: \(url)"
+                    err = L("SHA1 校验失败: %@", url.absoluteString)
                     try? fm.removeItem(at: tmp)
                     return
                 }
@@ -163,7 +163,7 @@ private func downloadToFile(url: URL, dest: URL, expectedSha1: String?) -> Strin
             if let expected = expectedSha1 {
                 let data = (try? Data(contentsOf: dest)) ?? Data()
                 if sha1Hex(data).lowercased() != expected.lowercased() {
-                    return "SHA1 校验失败: \(url)"
+                    return L("SHA1 校验失败: %@", url.absoluteString)
                 }
             }
             return nil
@@ -461,19 +461,19 @@ private func executeProcessors(
                 }
             }
         }
-        return "无法下载处理器依赖: \(coord)"
+        return L("无法下载处理器依赖: %@", coord)
     }
 
     let java = normalizedJavaPath(loadConfig().javaPath)
     guard FileManager.default.isExecutableFile(atPath: java) else {
-        return "Java 路径为空或不可执行"
+        return localizeText("Java 路径为空或不可执行")
     }
     for (index, proc) in processors.enumerated() {
         if let sides = proc.sides, !sides.contains("client") { continue }
         guard let jarName = proc.jar else { continue }
         let jarPath = metaDir.appendingPathComponent(mavenPath(jarName)).path
         guard FileManager.default.fileExists(atPath: jarPath) else {
-            return "processor 缺少 jar: \(jarName)"
+            return L("processor 缺少 jar: %@", jarName)
         }
 
         var classpath: [String] = []
@@ -538,10 +538,10 @@ private func executeProcessors(
             try procProcess.run()
             procProcess.waitUntilExit()
             if procProcess.terminationStatus != 0 {
-                return "processor 执行失败: \(jarName) (\(index + 1)/\(processors.count))"
+                return L("processor 执行失败: %@ (%@/%@)", jarName, index + 1, processors.count)
             }
         } catch {
-            return "processor 执行失败: \(error.localizedDescription)"
+            return L("processor 执行失败: %@", error.localizedDescription)
         }
     }
     return nil
@@ -550,7 +550,7 @@ private func executeProcessors(
 func localCreateFullInstance(instance: String, gameVersion: String, modLoader: String) -> String? {
     let loader = modLoader.lowercased()
     if !["vanilla", "fabric", "quilt", "forge", "neoforge"].contains(loader) {
-        return "当前 CLI 本地创建仅支持 vanilla/fabric/quilt/forge/neoforge"
+        return localizeText("当前 CLI 本地创建仅支持 vanilla/fabric/quilt/forge/neoforge")
     }
 
     let config = loadConfig()
@@ -565,15 +565,15 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
     guard let manifestData = runDownload(URL(string: "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json")!),
           let manifestIndex = try? JSONDecoder().decode(MojangManifestIndex.self, from: manifestData),
           let target = manifestIndex.versions.first(where: { $0.id == gameVersion }) else {
-        return "无法获取版本列表或未找到版本 \(gameVersion)"
+        return L("无法获取版本列表或未找到版本 %@", gameVersion)
     }
 
     // 2) 拉取版本详情（宽松解析）
     guard let detailData = runDownload(target.url) else {
-        return "无法下载版本详情 \(target.url)"
+        return L("无法下载版本详情 %@", target.url.absoluteString)
     }
     guard let detail = parseVersionDetail(detailData) else {
-        return "解析版本详情失败：JSON 结构与预期不符"
+        return localizeText("解析版本详情失败：JSON 结构与预期不符")
     }
 
     // 3) 创建目录
@@ -590,13 +590,13 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
         try fm.createDirectory(at: metaDir.appendingPathComponent("assets/objects", isDirectory: true), withIntermediateDirectories: true)
         try fm.createDirectory(at: metaDir.appendingPathComponent("natives", isDirectory: true), withIntermediateDirectories: true)
     } catch {
-        return "创建目录失败: \(error.localizedDescription)"
+        return L("创建目录失败: %@", error.localizedDescription)
     }
 
     // 4) 下载 client jar
     let clientJar = metaDir.appendingPathComponent("versions/\(detail.id)/\(detail.id).jar")
     if let err = downloadToFile(url: detail.client.url, dest: clientJar, expectedSha1: detail.client.sha1) {
-        return "下载客户端失败: \(err)"
+        return L("下载客户端失败: %@", err)
     }
 
     // 5) 下载 libraries (基础 + loader)
@@ -618,7 +618,7 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
             loaderGameArgs = mapped.gameArgs
             loaderJvmArgs = mapped.jvmArgs
         } else {
-            return "获取 Fabric 加载器信息失败（该 MC 版本可能暂无 Fabric Loader：\(gameVersion)）"
+            return L("获取 Fabric 加载器信息失败（该 MC 版本可能暂无 Fabric Loader：%@）", gameVersion)
         }
     } else if loader == "quilt" {
         if let profile = fetchQuiltLoaderProfile(gameVersion: gameVersion) {
@@ -633,13 +633,13 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
             loaderGameArgs = mapped.gameArgs
             loaderJvmArgs = mapped.jvmArgs
         } else {
-            return "获取 Quilt 加载器信息失败（该 MC 版本可能暂无 Quilt Loader：\(gameVersion)）"
+            return L("获取 Quilt 加载器信息失败（该 MC 版本可能暂无 Quilt Loader：%@）", gameVersion)
         }
     } else if loader == "forge" || loader == "neoforge" {
         // Modrinth launcher-meta uses "neo" for NeoForge
         let type = "forge"
         guard let profile = fetchModrinthLoaderProfile(type: type, gameVersion: gameVersion) else {
-            return "获取 \(loader) 加载器信息失败（该 MC 版本可能暂无 Loader：\(gameVersion)）"
+            return L("获取 %@ 加载器信息失败（该 MC 版本可能暂无 Loader：%@）", loader, gameVersion)
         }
         forgeProfile = profile
         loaderMainClass = profile.mainClass
@@ -668,7 +668,7 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
     for lib in allLibraries {
         let dest = metaDir.appendingPathComponent(lib.path)
         if let err = downloadToFile(url: lib.url, dest: dest, expectedSha1: lib.sha1) {
-            return "下载依赖失败 \(lib.name): \(err)"
+            return L("下载依赖失败 %@: %@", lib.name, err)
         }
     }
 
@@ -688,11 +688,11 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
     // 6) 下载资产索引与资源
     let assetIndexDest = metaDir.appendingPathComponent("assets/indexes/\(detail.assetIndex.id).json")
     if let err = downloadToFile(url: detail.assetIndex.url, dest: assetIndexDest, expectedSha1: detail.assetIndex.sha1) {
-        return "下载资源索引失败: \(err)"
+        return L("下载资源索引失败: %@", err)
     }
     guard let assetIndexData = try? Data(contentsOf: assetIndexDest),
           let assetIndex = try? JSONDecoder().decode(AssetIndexData.self, from: assetIndexData) else {
-        return "解析资源索引失败"
+        return localizeText("解析资源索引失败")
     }
     for (path, obj) in assetIndex.objects {
         let hashPrefix = String(obj.hash.prefix(2))
@@ -700,7 +700,7 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
         if fm.fileExists(atPath: dest.path) { continue }
         let url = URL(string: "https://resources.download.minecraft.net/\(hashPrefix)/\(obj.hash)")!
         if let err = downloadToFile(url: url, dest: dest, expectedSha1: obj.hash) {
-            return "下载资源文件失败 \(path): \(err)"
+            return L("下载资源文件失败 %@: %@", path, err)
         }
     }
 
@@ -751,10 +751,10 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
     let dbURL = dbDir.appendingPathComponent("data.db")
     do {
         try fm.createDirectory(at: dbDir, withIntermediateDirectories: true)
-    } catch { return "创建数据库目录失败: \(error.localizedDescription)" }
+    } catch { return L("创建数据库目录失败: %@", error.localizedDescription) }
     guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
           let jsonText = String(data: data, encoding: .utf8) else {
-        return "构建实例数据失败"
+        return localizeText("构建实例数据失败")
     }
     let tableSQL = """
     CREATE TABLE IF NOT EXISTS game_versions (
@@ -782,10 +782,10 @@ func localCreateFullInstance(instance: String, gameVersion: String, modLoader: S
         try process.run()
         process.waitUntilExit()
     } catch {
-        return "写入实例数据库失败: \(error.localizedDescription)"
+        return L("写入实例数据库失败: %@", error.localizedDescription)
     }
     if process.terminationStatus != 0 {
-        return "写入实例数据库失败"
+        return localizeText("写入实例数据库失败")
     }
 
     return nil

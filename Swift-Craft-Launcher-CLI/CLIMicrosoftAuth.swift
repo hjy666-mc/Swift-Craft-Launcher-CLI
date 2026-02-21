@@ -200,20 +200,20 @@ enum CLIHTTP {
         headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
-            throw CLIAuthError.message("无效的 HTTP 响应")
+            throw CLIAuthError.message(localizeText("无效的 HTTP 响应"))
         }
         return (data, http)
     }
 
     private static func validate(response: URLResponse, data: Data) throws {
         guard let http = response as? HTTPURLResponse else {
-            throw CLIAuthError.message("无效的 HTTP 响应")
+            throw CLIAuthError.message(localizeText("无效的 HTTP 响应"))
         }
         guard (200...299).contains(http.statusCode) else {
             if let text = String(data: data, encoding: .utf8), !text.isEmpty {
-                throw CLIAuthError.message("请求失败: HTTP \(http.statusCode) - \(text)")
+                throw CLIAuthError.message(L("请求失败: HTTP %@ - %@", http.statusCode, text))
             }
-            throw CLIAuthError.message("请求失败: HTTP \(http.statusCode)")
+            throw CLIAuthError.message(L("请求失败: HTTP %@", http.statusCode))
         }
     }
 }
@@ -254,11 +254,11 @@ enum CLIMicrosoftAuth {
     static func loginDeviceCode(progress: ((String) -> Void)? = nil) async throws -> (MinecraftProfileResponse, AuthCredential) {
         let clientId = CLIAppConstants.minecraftClientId
         guard !clientId.isEmpty, !clientId.contains("$(") else {
-            throw CLIAuthError.message("缺少 Microsoft Client ID。请用 `export SCL_CLIENT_ID=...` 或 `SCL_CLIENT_ID=... scl account create -microsoft`")
+            throw CLIAuthError.message(localizeText("缺少 Microsoft Client ID。请用 `export SCL_CLIENT_ID=...` 或 `SCL_CLIENT_ID=... scl account create -microsoft`"))
         }
 
         let device = try await requestDeviceCode(clientId: clientId)
-        progress?(device.message ?? "请在浏览器中完成 Microsoft 登录")
+        progress?(device.message ?? localizeText("请在浏览器中完成 Microsoft 登录"))
 
         if let url = URL(string: device.verificationUriComplete ?? device.verificationUri) {
             openURL(url)
@@ -292,11 +292,11 @@ enum CLIMicrosoftAuth {
             return credential
         }
         guard !credential.refreshToken.isEmpty else {
-            throw CLIAuthError.message("登录已过期，请重新登录该账户")
+            throw CLIAuthError.message(localizeText("登录已过期，请重新登录该账户"))
         }
         let refreshed = try await refreshToken(refreshToken: credential.refreshToken)
         guard let access = refreshed.accessToken else {
-            throw CLIAuthError.message("刷新令牌失败")
+            throw CLIAuthError.message(localizeText("刷新令牌失败"))
         }
         let xboxToken = try await getXboxLiveToken(accessToken: access)
         let xuid = xboxToken.displayClaims.xui.first?.uhs ?? ""
@@ -350,14 +350,14 @@ enum CLIMicrosoftAuth {
                 continue
             }
             if error == "expired_token" {
-                throw CLIAuthError.message("设备码已过期，请重新登录")
+                throw CLIAuthError.message(localizeText("设备码已过期，请重新登录"))
             }
             if !error.isEmpty {
-                throw CLIAuthError.message("Microsoft 登录失败: \(error)")
+                throw CLIAuthError.message(L("Microsoft 登录失败: %@", error))
             }
             try await Task.sleep(nanoseconds: UInt64(waitInterval) * 1_000_000_000)
         }
-        throw CLIAuthError.message("登录超时，请重试")
+        throw CLIAuthError.message(localizeText("登录超时，请重试"))
     }
 
     private static func refreshToken(refreshToken: String) async throws -> OAuthTokenResponse {
@@ -422,7 +422,7 @@ enum CLIMicrosoftAuth {
             headers: ["Content-Type": "application/json"]
         )
         guard http.statusCode == 200 else {
-            throw CLIAuthError.message("获取 Minecraft 访问令牌失败: HTTP \(http.statusCode)")
+            throw CLIAuthError.message(L("获取 Minecraft 访问令牌失败: HTTP %@", http.statusCode))
         }
         let token = try JSONDecoder().decode(MinecraftTokenResponse.self, from: data)
         return token.accessToken
@@ -436,7 +436,7 @@ enum CLIMicrosoftAuth {
         let hasProduct = names.contains("product_minecraft")
         let hasGame = names.contains("game_minecraft")
         if !hasProduct || !hasGame {
-            throw CLIAuthError.message("该账户未购买 Minecraft")
+            throw CLIAuthError.message(localizeText("该账户未购买 Minecraft"))
         }
     }
 

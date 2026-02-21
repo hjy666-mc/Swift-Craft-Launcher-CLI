@@ -588,6 +588,7 @@ enum InputKey {
     case enter
     case escape
     case quit
+    case open
     case resetOne
     case resetAll
     case changeType
@@ -642,6 +643,7 @@ func readInputKey(timeoutMs: Int? = nil) -> InputKey {
     if byte == 108 || byte == 76 { return .right }  // l / L
     if byte == 114 { return .resetOne }             // r
     if byte == 82 { return .resetAll }              // R
+    if byte == 111 || byte == 79 { return .open }   // o / O
     if byte == 116 || byte == 84 { return .changeType } // t / T
     if byte == 47 { return .changeQuery } // /
     if byte == 113 || byte == 81 { return .quit }
@@ -683,8 +685,8 @@ func chooseOptionInteractively(title: String, header: String = "OPTION", options
             let pageInfo = pagedBounds(total: options.count, selectedIndex: selected, pageSize: pageSize)
             clearScreen()
             print(stylize(title, ANSI.bold + ANSI.cyan))
-            print(stylize("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消", ANSI.yellow))
-            print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
+            print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+            print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
             print("")
             let pageItems = Array(options[pageInfo.start..<pageInfo.end])
             let rows = pageItems.enumerated().map { [String(pageInfo.start + $0.offset + 1), $0.element] }
@@ -725,7 +727,7 @@ func chooseOptionInteractively(title: String, header: String = "OPTION", options
     }
 }
 
-func chooseInstanceInteractively(title: String = "选择目标实例") -> String? {
+func chooseInstanceInteractively(title: String = localizeText("选择目标实例")) -> String? {
     let instances = listInstances()
     guard !instances.isEmpty else { return nil }
 
@@ -747,8 +749,8 @@ func chooseInstanceInteractively(title: String = "选择目标实例") -> String
             let pageInfo = pagedBounds(total: instances.count, selectedIndex: selected, pageSize: pageSize)
             clearScreen()
             print(stylize(title, ANSI.bold + ANSI.cyan))
-            print(stylize("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消", ANSI.yellow))
-            print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
+            print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+            print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
             print("")
             let pageItems = Array(instances[pageInfo.start..<pageInfo.end])
             let rows = pageItems.enumerated().map { [String(pageInfo.start + $0.offset + 1), $0.element] }
@@ -810,9 +812,9 @@ func chooseResourceVersionInteractively(projectId: String) -> ModrinthVersion? {
             let pageSize = interactivePageSize()
             let pageInfo = pagedBounds(total: versions.count, selectedIndex: selected, pageSize: pageSize)
             clearScreen()
-            print(stylize("请选择要安装的版本", ANSI.bold + ANSI.cyan))
-            print(stylize("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消", ANSI.yellow))
-            print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
+            print(stylize(localizeText("请选择要安装的版本"), ANSI.bold + ANSI.cyan))
+            print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+            print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
             print("")
             let pageItems = Array(versions[pageInfo.start..<pageInfo.end])
             let rows = pageItems.enumerated().map { idx, ver in
@@ -880,9 +882,9 @@ func runSettingsTUI() {
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: allKeys.count, selectedIndex: selected, pageSize: pageSize)
         clearScreen()
-        print(stylize("设置中心", ANSI.bold + ANSI.cyan))
-        print(stylize("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 修改 · r 重置当前项 · R 重置全部 · q 退出", ANSI.yellow))
-        print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
+        print(stylize(localizeText("设置中心"), ANSI.bold + ANSI.cyan))
+        print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 修改 · r 重置当前项 · R 重置全部 · q 退出"), ANSI.yellow))
+        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
         print("")
 
         let pageKeys = Array(allKeys[pageInfo.start..<pageInfo.end])
@@ -909,22 +911,22 @@ func runSettingsTUI() {
             let currentValue = getAppStorageValue(key: target) ?? "-"
             raw.disable()
             print("")
-            print(stylize("设置 \(target)（当前: \(currentValue)）", ANSI.blue))
-            print(stylize("输入新值并回车（空输入取消）: ", ANSI.blue), terminator: "")
+            print(stylize(L("设置 %@（当前: %@）", target, currentValue), ANSI.blue))
+            print(stylize(localizeText("输入新值并回车（空输入取消）: "), ANSI.blue), terminator: "")
             let line = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             _ = raw.enable()
             if line.isEmpty { continue }
             if let err = setAppStorageValue(key: target, value: line) {
                 warn(err)
             } else {
-                success("已设置 \(target)")
+                success(L("已设置 %@", target))
             }
         case .resetOne:
             let target = allKeys[selected]
             if let err = resetAppStorageValue(key: target) {
                 warn(err)
             }
-            success("已重置 \(target)")
+            success(L("已重置 %@", target))
         case .resetAll:
             for defaults in appDefaultsStores() {
                 for spec in appStorageSpecs {
@@ -932,7 +934,7 @@ func runSettingsTUI() {
                 }
                 defaults.synchronize()
             }
-            success("已重置全部配置")
+            success(localizeText("已重置全部配置"))
         case .other:
             continue
         case .quit:
@@ -1080,7 +1082,7 @@ func profileForAccountName(_ name: String) -> StoredUserProfile? {
 
 func refreshCredentialSync(_ credential: AuthCredential) -> Result<AuthCredential, Error> {
     let semaphore = DispatchSemaphore(value: 0)
-    var result: Result<AuthCredential, Error> = .failure(CLIAuthError.message("未知错误"))
+    var result: Result<AuthCredential, Error> = .failure(CLIAuthError.message(localizeText("未知错误")))
     Task {
         do {
             let refreshed = try await CLIMicrosoftAuth.refreshIfNeeded(credential)
@@ -1250,7 +1252,7 @@ func createLocalPlaceholderInstance(instance: String, gameVersion: String, modLo
             config.gameDir = fallbackPath
             saveConfig(config)
         } else {
-            return "创建实例目录失败: \(dirErr)"
+            return L("创建实例目录失败: %@", dirErr)
         }
     }
 
@@ -1260,7 +1262,7 @@ func createLocalPlaceholderInstance(instance: String, gameVersion: String, modLo
     do {
         try fm.createDirectory(at: dbURL.deletingLastPathComponent(), withIntermediateDirectories: true)
     } catch {
-        return "创建数据库目录失败: \(error.localizedDescription)"
+        return L("创建数据库目录失败: %@", error.localizedDescription)
     }
 
     let now = Date().timeIntervalSince1970
@@ -1287,7 +1289,7 @@ func createLocalPlaceholderInstance(instance: String, gameVersion: String, modLo
     ]
     guard let data = try? JSONSerialization.data(withJSONObject: payload, options: []),
           let jsonText = String(data: data, encoding: .utf8) else {
-        return "构建实例数据失败"
+        return localizeText("构建实例数据失败")
     }
 
     let tableSQL = """
@@ -1320,13 +1322,13 @@ func createLocalPlaceholderInstance(instance: String, gameVersion: String, modLo
         try process.run()
         process.waitUntilExit()
     } catch {
-        return "写入实例数据库失败: \(error.localizedDescription)"
+        return L("写入实例数据库失败: %@", error.localizedDescription)
     }
 
     if process.terminationStatus != 0 {
         let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
         let errText = String(data: errData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown sqlite error"
-        return "写入实例数据库失败: \(errText)"
+        return L("写入实例数据库失败: %@", errText)
     }
 
     return nil
@@ -1495,8 +1497,8 @@ func chooseCompatibleInstanceInteractively(
             let pageInfo = pagedBounds(total: meta.count, selectedIndex: selected, pageSize: pageSize)
             clearScreen()
             print(stylize(title, ANSI.bold + ANSI.cyan))
-            print(stylize("灰色实例不可安装 · ↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消", ANSI.yellow))
-            print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
+            print(stylize(localizeText("灰色实例不可安装 · ↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+            print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
             print("")
             let pageItems = Array(meta[pageInfo.start..<pageInfo.end])
             let rows = pageItems.enumerated().map { idx, item in
@@ -1585,7 +1587,7 @@ func printInstanceOverview(instance: String) {
     let path = (overview["path"] as? String) ?? "-"
     let launchable = (overview["launchable"] as? Bool) == true ? "yes" : "no"
 
-    print(stylize("实例详情: \(instance)", ANSI.bold + ANSI.cyan))
+    print(stylize(L("实例详情: %@", instance), ANSI.bold + ANSI.cyan))
     printTable(headers: ["KEY", "VALUE"], rows: [
         ["instance", instance],
         ["path", path],
@@ -1609,7 +1611,7 @@ func printInstanceOverview(instance: String) {
     func printItemSection(_ key: String, _ title: String) {
         let values = items[key] ?? []
         print("")
-        print(stylize("\(title)（前 \(min(values.count, 12)) 项）", ANSI.blue))
+        print(stylize(L("%@（前 %@ 项）", title, min(values.count, 12)), ANSI.blue))
         if values.isEmpty {
             print(stylize("  (empty)", ANSI.gray))
             return
@@ -1625,9 +1627,9 @@ func printInstanceOverview(instance: String) {
     printItemSection("worlds", "Worlds")
 }
 
-func runGameListTUI(instances: [String], title: String = "实例列表") {
+func runGameListTUI(instances: [String], title: String = localizeText("实例列表")) {
     guard !instances.isEmpty else {
-        warn("当前无实例")
+        warn(localizeText("当前无实例"))
         return
     }
     enum View { case list, detail }
@@ -1658,15 +1660,15 @@ func runGameListTUI(instances: [String], title: String = "实例列表") {
                 let pageInfo = pagedBounds(total: instances.count, selectedIndex: selected, pageSize: pageSize)
                 clearScreen()
                 print(stylize(title, ANSI.bold + ANSI.cyan))
-                print(stylize("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · q 退出", ANSI.yellow))
-                print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
+                print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · q 退出"), ANSI.yellow))
+                print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
                 print("")
                 let pageItems = Array(instances[pageInfo.start..<pageInfo.end])
                 let rows = pageItems.enumerated().map { [String(pageInfo.start + $0.offset + 1), $0.element] }
                 printSelectableTable(headers: ["#", "INSTANCE"], rows: rows, selectedIndex: selected - pageInfo.start)
             case .detail:
                 clearScreen()
-                print(stylize("Enter/Esc 返回列表 · q 退出", ANSI.yellow))
+                print(stylize(localizeText("Enter/Esc 返回列表 · q 退出"), ANSI.yellow))
                 print("")
                 printInstanceOverview(instance: instances[selected])
             }
@@ -1757,7 +1759,7 @@ func parseRequiredResourceType(_ args: [String]) -> String? {
     return nil
 }
 
-func chooseResourceTypeInteractively(title: String = "请选择资源类型") -> String? {
+func chooseResourceTypeInteractively(title: String = localizeText("请选择资源类型")) -> String? {
     let options = ["mod", "shader", "datapack", "resourcepack", "modpack"]
     var selected = 0
     var raw = TerminalRawMode()
@@ -1767,7 +1769,7 @@ func chooseResourceTypeInteractively(title: String = "请选择资源类型") ->
     while true {
         clearScreen()
         print(stylize(title, ANSI.bold + ANSI.cyan))
-        print(stylize("↑/↓/j/k 选择 · Enter 确认 · q/Esc 取消", ANSI.yellow))
+        print(stylize(localizeText("↑/↓/j/k 选择 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
         print("")
         let rows = options.enumerated().map { [String($0.offset + 1), $0.element] }
         printSelectableTable(headers: ["#", "TYPE"], rows: rows, selectedIndex: selected)
@@ -1871,7 +1873,7 @@ func ensureMainAppImportResponseObserver() {
             return
         }
         let ok = userInfo[externalImportOkKey] as? Bool ?? false
-        let message = userInfo[externalImportMessageKey] as? String ?? (ok ? "导入成功" : "导入失败")
+        let message = userInfo[externalImportMessageKey] as? String ?? (ok ? localizeText("导入成功") : localizeText("导入失败"))
         let gameName = userInfo[externalImportGameNameKey] as? String
         externalImportResponseLock.lock()
         externalImportResponseCache[requestId] = (ok, message, gameName)
@@ -1931,14 +1933,14 @@ func waitMainAppImportResult(requestId: String, responseFile: String, timeout: T
         if let data = try? Data(contentsOf: responseURL),
            let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             let ok = raw[externalImportOkKey] as? Bool ?? false
-            let message = raw[externalImportMessageKey] as? String ?? (ok ? "导入成功" : "导入失败")
+            let message = raw[externalImportMessageKey] as? String ?? (ok ? localizeText("导入成功") : localizeText("导入失败"))
             let gameName = raw[externalImportGameNameKey] as? String
             try? fm.removeItem(at: responseURL)
             return (ok, message, gameName)
         }
         usleep(150_000)
     }
-    return (false, "导入超时：主程序未在限定时间内返回结果（requestId=\(requestId)）", nil)
+    return (false, L("导入超时：主程序未在限定时间内返回结果（requestId=%@）", requestId), nil)
 }
 
 func requestMainAppCreateMicrosoftAccount(requestId: String, responseFile: String) {
@@ -1963,7 +1965,7 @@ func waitMainAppCreateMicrosoftAccountResult(
         if let data = try? Data(contentsOf: responseURL),
            let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             let ok = raw[externalAccountMicrosoftOkKey] as? Bool ?? false
-            let message = raw[externalAccountMicrosoftMessageKey] as? String ?? (ok ? "登录成功" : "登录失败")
+            let message = raw[externalAccountMicrosoftMessageKey] as? String ?? (ok ? localizeText("登录成功") : localizeText("登录失败"))
             let name = raw[externalAccountMicrosoftNameKey] as? String
             try? fm.removeItem(at: responseURL)
             return (ok, message, name)
@@ -1971,7 +1973,7 @@ func waitMainAppCreateMicrosoftAccountResult(
         onTick?(Date().timeIntervalSince(start))
         usleep(150_000)
     }
-    return (false, "登录超时：主程序未在限定时间内返回结果（requestId=\(requestId)）", nil)
+    return (false, L("登录超时：主程序未在限定时间内返回结果（requestId=%@）", requestId), nil)
 }
 
 func ensureMainAppCreateGameResponseObserver() {
@@ -1990,7 +1992,7 @@ func ensureMainAppCreateGameResponseObserver() {
             return
         }
         let ok = userInfo[externalGameCreateOkKey] as? Bool ?? false
-        let message = userInfo[externalGameCreateMessageKey] as? String ?? (ok ? "创建成功" : "创建失败")
+        let message = userInfo[externalGameCreateMessageKey] as? String ?? (ok ? localizeText("创建成功") : localizeText("创建失败"))
         let instance = userInfo[externalGameCreateInstanceKey] as? String
         externalGameCreateResponseLock.lock()
         externalGameCreateResponseCache[requestId] = (ok, message, instance)
@@ -2037,7 +2039,7 @@ func waitMainAppCreateGameResult(
         if let data = try? Data(contentsOf: responseURL),
            let raw = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             let ok = raw[externalGameCreateOkKey] as? Bool ?? false
-            let message = raw[externalGameCreateMessageKey] as? String ?? (ok ? "创建成功" : "创建失败")
+            let message = raw[externalGameCreateMessageKey] as? String ?? (ok ? localizeText("创建成功") : localizeText("创建失败"))
             let instance = raw[externalGameCreateInstanceKey] as? String
             try? fm.removeItem(at: responseURL)
             return (ok, message, instance)
@@ -2045,7 +2047,7 @@ func waitMainAppCreateGameResult(
         onTick?(Date().timeIntervalSince(start))
         usleep(150_000)
     }
-    return (false, "创建超时：主程序未在限定时间内返回结果（requestId=\(requestId)）", nil)
+    return (false, L("创建超时：主程序未在限定时间内返回结果（requestId=%@）", requestId), nil)
 }
 
 func valueOf(_ flag: String, in args: [String]) -> String? {
@@ -2165,7 +2167,7 @@ func parseBoolValue(_ value: String) -> Bool? {
 
 func setAppStorageValue(key: String, value: String) -> String? {
     guard let spec = appStorageSpec(for: key) else {
-        return "未知配置项: \(key)"
+        return L("未知配置项: %@", key)
     }
     let boolValue = parseBoolValue(value)
     let intValue = Int(value)
@@ -2207,7 +2209,7 @@ func getAppStorageValue(key: String) -> String? {
 
 func resetAppStorageValue(key: String) -> String? {
     guard appStorageKeySet.contains(key) else {
-        return "未知配置项: \(key)"
+        return L("未知配置项: %@", key)
     }
     for defaults in appDefaultsStores() {
         defaults.removeObject(forKey: key)
@@ -2260,10 +2262,10 @@ func applyConfigValue(_ config: inout CLIConfig, key: String, value: String) -> 
     case "preferredResourceType":
         let normalized = value.lowercased()
         let allowed = ["mod", "datapack", "resourcepack", "shader"]
-        guard allowed.contains(normalized) else { return "preferredResourceType 只能是 mod/datapack/resourcepack/shader" }
+        guard allowed.contains(normalized) else { return localizeText("preferredResourceType 只能是 mod/datapack/resourcepack/shader") }
         config.preferredResourceType = normalized
     case "pageSize":
-        guard let size = Int(value), (5...50).contains(size) else { return "pageSize 必须在 5..50" }
+        guard let size = Int(value), (5...50).contains(size) else { return localizeText("pageSize 必须在 5..50") }
         config.pageSize = size
     case "autoOpenMainApp":
         let normalized = value.lowercased()
@@ -2272,10 +2274,10 @@ func applyConfigValue(_ config: inout CLIConfig, key: String, value: String) -> 
         } else if ["0", "false", "no", "off"].contains(normalized) {
             config.autoOpenMainApp = false
         } else {
-            return "autoOpenMainApp 只能是 true/false"
+            return localizeText("autoOpenMainApp 只能是 true/false")
         }
     default:
-        return "未知配置项: \(key)"
+        return L("未知配置项: %@", key)
     }
     return nil
 }
@@ -2319,15 +2321,15 @@ func openMainApp(emitMessage: Bool = true) -> Bool {
         process.waitUntilExit()
         let ok = process.terminationStatus == 0
         if emitMessage && ok {
-            success("已尝试唤起主程序 Swift Craft Launcher")
+            success(localizeText("已尝试唤起主程序 Swift Craft Launcher"))
         }
         if emitMessage && !ok {
-            warn("无法自动唤起主程序，请手动打开 Swift Craft Launcher.app")
+            warn(localizeText("无法自动唤起主程序，请手动打开 Swift Craft Launcher.app"))
         }
         return ok
     } catch {
         if emitMessage {
-            warn("无法自动唤起主程序，请手动打开 Swift Craft Launcher.app")
+            warn(localizeText("无法自动唤起主程序，请手动打开 Swift Craft Launcher.app"))
         }
         return false
     }

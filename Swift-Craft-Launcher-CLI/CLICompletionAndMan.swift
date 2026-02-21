@@ -10,7 +10,7 @@ func handleCompletion(args: [String]) {
     let wantsPrint = args.contains("--print")
     let shell = args.first { !$0.hasPrefix("-") }?.lowercased() ?? ""
     if shell.isEmpty {
-        fail("请指定 shell: zsh/bash/fish")
+        fail(localizeText("请指定 shell: zsh/bash/fish"))
         return
     }
 
@@ -154,17 +154,21 @@ func printManHelp() {
         ])
         return
     }
+    let title = localizeText("MAN 命令")
+    let line1 = localizeText("输出 `scl` 的 man 手册内容（roff 格式）")
+    let line2 = localizeText("安装到 /usr/local/share/man/man1/scl.1（推荐）")
+    let line3 = localizeText("安装到 ~/.local/share/man/man1/scl.1（无 sudo 场景）")
     print("""
-\(stylize("MAN 命令", ANSI.bold + ANSI.cyan))
+\(stylize(title, ANSI.bold + ANSI.cyan))
 
 \(stylize("scl man", ANSI.bold + ANSI.blue))
-  输出 `scl` 的 man 手册内容（roff 格式）
+  \(line1)
 
 \(stylize("scl man --install", ANSI.bold + ANSI.blue))
-  安装到 /usr/local/share/man/man1/scl.1（推荐）
+  \(line2)
 
 \(stylize("scl man --install --user", ANSI.bold + ANSI.blue))
-  安装到 ~/.local/share/man/man1/scl.1（无 sudo 场景）
+  \(line3)
 """)
 }
 
@@ -353,6 +357,7 @@ Swift Craft Launcher project.
 func zshCompletionScript() -> String {
     let descSet = localizeText("设置配置")
     let descGet = localizeText("读取配置")
+    let descSearch = localizeText("全局搜索")
     let descGame = localizeText("游戏实例管理")
     let descAccount = localizeText("账号管理")
     let descResources = localizeText("资源管理")
@@ -371,6 +376,7 @@ func zshCompletionScript() -> String {
       groups=(
         'set:\(descSet)'
         'get:\(descGet)'
+        'search:\(descSearch)'
         'game:\(descGame)'
         'account:\(descAccount)'
         'resources:\(descResources)'
@@ -387,6 +393,9 @@ func zshCompletionScript() -> String {
 
       local group="$words[2]"
       case "$group" in
+        search)
+          _values 'search options' '--help' '--limit' '--page' '--json'
+          ;;
         set)
           _values 'set subcommands/options' '--help' '--reset'
           ;;
@@ -457,7 +466,7 @@ func bashCompletionScript() -> String {
       local cur prev words cword
       _init_completion || return
 
-      local groups="set get game account resources completion lang open uninstall"
+      local groups="set get search game account resources completion lang open uninstall"
       local game_subs="list status stutue search config create launch stop delete"
       local account_subs="list create delete set-default use show"
       local resources_subs="search install list remove"
@@ -468,6 +477,9 @@ func bashCompletionScript() -> String {
       fi
 
       case "${words[1]}" in
+        search)
+          COMPREPLY=( $(compgen -W "--help --limit --page --json" -- "$cur") )
+          ;;
         set)
           COMPREPLY=( $(compgen -W "--help --reset" -- "$cur") )
           ;;
@@ -525,6 +537,7 @@ func bashCompletionScript() -> String {
 func fishCompletionScript() -> String {
     let descSet = localizeText("设置配置")
     let descGet = localizeText("读取配置")
+    let descSearch = localizeText("全局搜索")
     let descGame = localizeText("游戏实例管理")
     let descAccount = localizeText("账号管理")
     let descResources = localizeText("资源管理")
@@ -536,6 +549,7 @@ func fishCompletionScript() -> String {
     complete -c scl -f
     complete -c scl -n '__fish_use_subcommand' -a set -d '\(descSet)'
     complete -c scl -n '__fish_use_subcommand' -a get -d '\(descGet)'
+    complete -c scl -n '__fish_use_subcommand' -a search -d '\(descSearch)'
     complete -c scl -n '__fish_use_subcommand' -a game -d '\(descGame)'
     complete -c scl -n '__fish_use_subcommand' -a account -d '\(descAccount)'
     complete -c scl -n '__fish_use_subcommand' -a resources -d '\(descResources)'

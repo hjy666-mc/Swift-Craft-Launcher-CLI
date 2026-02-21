@@ -29,6 +29,7 @@ func printGlobalHelp() {
 \(stylize(L("help_groups_title"), ANSI.bold + ANSI.blue))
   set        \(L("help_group_set"))
   get        \(L("help_group_get"))
+  search     \(L("help_group_search"))
   game       \(L("help_group_game"))
   account    \(L("help_group_account"))
   resources  \(L("help_group_resources"))
@@ -48,6 +49,7 @@ func printGlobalHelp() {
 \(stylize(L("help_more_title"), ANSI.bold + ANSI.blue))
   \(L("help_more_set"))
   \(L("help_more_get"))
+  \(L("help_more_search"))
   \(L("help_more_game"))
   \(L("help_more_account"))
   \(L("help_more_resources"))
@@ -189,6 +191,23 @@ func printResourcesHelp() {
 
 \(stylize(L("help_resources_remove_cmd"), ANSI.bold + ANSI.blue))
 \(L("help_resources_remove_block"))
+""")
+}
+
+func printSearchHelp() {
+    if jsonOutputEnabled {
+        printJSON([
+            "ok": true,
+            "type": "help",
+            "topic": "search"
+        ])
+        return
+    }
+    print("""
+\(stylize(L("help_search_title"), ANSI.bold + ANSI.cyan))
+
+\(stylize(L("help_search_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_search_block"))
 """)
 }
 

@@ -9,7 +9,7 @@ func handleSet(args: [String]) {
 
     if args.isEmpty {
         if jsonOutputEnabled {
-            fail("JSON 模式下请使用: scl set <key> <value> --json")
+            fail(localizeText("JSON 模式下请使用: scl set <key> <value> --json"))
             return
         }
         runSettingsTUI()
@@ -20,14 +20,14 @@ func handleSet(args: [String]) {
         let key = args.dropFirst(resetIndex + 1).first
         if let key {
             if !appStorageKeySet.contains(key) {
-                fail("未知配置项: \(key)")
+                fail(L("未知配置项: %@", key))
                 return
             }
             if let err = resetAppStorageValue(key: key) {
                 fail(err)
                 return
             }
-            success("已重置 \(key)")
+            success(L("已重置 %@", key))
         } else {
             for defaults in appDefaultsStores() {
                 for spec in appStorageSpecs {
@@ -35,27 +35,27 @@ func handleSet(args: [String]) {
                 }
                 defaults.synchronize()
             }
-            success("已重置全部配置")
+            success(localizeText("已重置全部配置"))
         }
         return
     }
 
     guard args.count >= 2 else {
-        fail("用法错误：缺少 <key> <value>")
+        fail(localizeText("用法错误：缺少 <key> <value>"))
         return
     }
 
     let key = args[0]
     let value = args[1]
     if !appStorageKeySet.contains(key) {
-        fail("未知配置项: \(key)")
+        fail(L("未知配置项: %@", key))
         return
     }
     if let err = setAppStorageValue(key: key, value: value) {
         fail(err)
         return
     }
-    success("已设置 \(key)=\(value)")
+    success(L("已设置 %@=%@", key, value))
 }
 
 func handleGet(args: [String]) {
@@ -64,7 +64,7 @@ func handleGet(args: [String]) {
         return
     }
     if args.contains("--cli") {
-        fail("不再支持 --cli（已移除 CLI 内部配置项）")
+        fail(localizeText("不再支持 --cli（已移除 CLI 内部配置项）"))
         return
     }
 
@@ -74,7 +74,7 @@ func handleGet(args: [String]) {
     }
 
     guard let key = args.first else {
-        fail("用法错误：缺少 <key>")
+        fail(localizeText("用法错误：缺少 <key>"))
         return
     }
 
@@ -82,7 +82,7 @@ func handleGet(args: [String]) {
     if let v = getAppStorageValue(key: key) {
         value = v
     } else {
-        fail("未知配置项: \(key)")
+        fail(L("未知配置项: %@", key))
         return
     }
     if jsonOutputEnabled {
@@ -113,7 +113,7 @@ func handleGame(args: [String]) {
     case "stop": gameStop(args: subArgs)
     case "delete": gameDelete(args: subArgs)
     default:
-        fail("未知 game 子命令: \(sub)")
+        fail(L("未知 game 子命令: %@", sub))
     }
 }
 
@@ -128,13 +128,13 @@ func gameList(args: [String]) {
     let finalInstances = sortInstances(instances, by: sort, order: order)
 
     if finalInstances.isEmpty {
-        warn("当前无实例")
+        warn(localizeText("当前无实例"))
         return
     }
 
     let isInteractive = !jsonOutputEnabled && isatty(STDIN_FILENO) == 1 && isatty(STDOUT_FILENO) == 1
     if isInteractive {
-        runGameListTUI(instances: finalInstances, title: "实例列表")
+        runGameListTUI(instances: finalInstances, title: localizeText("实例列表"))
         return
     }
 
@@ -145,14 +145,14 @@ func gameList(args: [String]) {
 func gameStatus(args: [String]) {
     let instances = listInstances()
     if instances.isEmpty {
-        warn("当前无实例")
+        warn(localizeText("当前无实例"))
         return
     }
 
     let target = positionalArgs(args).first
     if let target {
         guard instances.contains(target) else {
-            fail("实例不存在: \(target)")
+            fail(L("实例不存在: %@", target))
             return
         }
         printInstanceOverview(instance: target)
@@ -161,16 +161,16 @@ func gameStatus(args: [String]) {
 
     let isInteractive = !jsonOutputEnabled && isatty(STDIN_FILENO) == 1 && isatty(STDOUT_FILENO) == 1
     if isInteractive {
-        runGameListTUI(instances: instances, title: "实例状态")
+        runGameListTUI(instances: instances, title: localizeText("实例状态"))
         return
     }
 
-    fail("用法错误：缺少 <instance>（或在交互终端中直接运行）")
+    fail(localizeText("用法错误：缺少 <instance>（或在交互终端中直接运行）"))
 }
 
 func gameSearch(args: [String]) {
     guard let kw = args.first else {
-        fail("用法错误：缺少 <keyword>")
+        fail(localizeText("用法错误：缺少 <keyword>"))
         return
     }
 
@@ -179,7 +179,7 @@ func gameSearch(args: [String]) {
     let instances = listInstances().filter { $0.localizedCaseInsensitiveContains(kw) }
     let finalInstances = sortInstances(instances, by: sort, order: order)
     if finalInstances.isEmpty {
-        warn("无匹配实例")
+        warn(localizeText("无匹配实例"))
         return
     }
 
@@ -189,7 +189,7 @@ func gameSearch(args: [String]) {
 
 func gameConfig(args: [String]) {
     guard let instance = args.first else {
-        fail("用法错误：缺少 <versionOrInstance>")
+        fail(localizeText("用法错误：缺少 <versionOrInstance>"))
         return
     }
 
@@ -210,17 +210,17 @@ func gameLaunch(args: [String]) {
         instance = provided
     } else {
         if jsonOutputEnabled {
-            fail("用法错误：缺少 <instance>（JSON 模式不支持交互选择）")
+            fail(localizeText("用法错误：缺少 <instance>（JSON 模式不支持交互选择）"))
             return
         }
-        guard let picked = chooseInstanceInteractively(title: "请选择要启动的实例") else {
-            fail("已取消启动：未选择实例")
+        guard let picked = chooseInstanceInteractively(title: localizeText("请选择要启动的实例")) else {
+            fail(localizeText("已取消启动：未选择实例"))
             return
         }
         instance = picked
     }
     guard let record = queryGameRecord(instance: instance) else {
-        fail("未找到实例启动记录: \(instance)")
+        fail(L("未找到实例启动记录: %@", instance))
         return
     }
     var command = record["launchCommand"] as? [String] ?? []
@@ -230,7 +230,7 @@ func gameLaunch(args: [String]) {
         let ml = (record["modLoader"] as? String) ?? ""
         if !gv.isEmpty && !ml.isEmpty {
             if let err = localCreateFullInstance(instance: instance, gameVersion: gv, modLoader: ml) {
-                fail("实例启动命令为空，且修复失败：\(err)")
+                fail(L("实例启动命令为空，且修复失败：%@", err))
                 return
             }
             if let refreshed = queryGameRecord(instance: instance),
@@ -239,7 +239,7 @@ func gameLaunch(args: [String]) {
             }
         }
         if command.isEmpty {
-            fail("实例启动命令为空: \(instance)")
+            fail(L("实例启动命令为空: %@", instance))
             return
         }
     }
@@ -323,7 +323,7 @@ func gameLaunch(args: [String]) {
     let javaFromRecord = (record["javaPath"] as? String) ?? ""
     let java = valueOf("--java", in: args) ?? (javaFromRecord.isEmpty ? config.javaPath : javaFromRecord)
     guard !java.isEmpty else {
-        fail("Java 路径为空，请使用 --java 指定或在 CLI 配置中设置")
+        fail(localizeText("Java 路径为空，请使用 --java 指定或在 CLI 配置中设置"))
         return
     }
 
@@ -345,7 +345,7 @@ func gameLaunch(args: [String]) {
             authToken = refreshed.accessToken
             authXuid = refreshed.xuid
         case .failure(let error):
-            warn("正版账号 Token 刷新失败，使用离线模式启动: \(error)")
+            warn(L("正版账号 Token 刷新失败，使用离线模式启动: %@", error.localizedDescription))
         }
     }
     let memoryMB = parseMemoryToMB(valueOf("--memory", in: args) ?? config.memory)
@@ -368,7 +368,7 @@ func gameLaunch(args: [String]) {
 
     let cwd = profileRoot().appendingPathComponent(instance, isDirectory: true)
     guard fm.fileExists(atPath: cwd.path) else {
-        fail("实例目录不存在: \(cwd.path)")
+        fail(L("实例目录不存在: %@", cwd.path))
         return
     }
 
@@ -404,10 +404,10 @@ func gameLaunch(args: [String]) {
                 "java": java,
             ])
         } else {
-            success("已启动实例: \(instance) (pid=\(process.processIdentifier))")
+            success(L("已启动实例: %@ (pid=%@)", instance, process.processIdentifier))
         }
     } catch {
-        fail("启动失败: \(error.localizedDescription)")
+        fail(L("启动失败: %@", error.localizedDescription))
     }
 }
 
@@ -415,7 +415,7 @@ func gameStop(args: [String]) {
     if args.contains("--all") {
         var state = loadProcessState()
         if state.pidByInstance.isEmpty {
-            warn("当前无已记录运行进程")
+            warn(localizeText("当前无已记录运行进程"))
             return
         }
         var stopped: [String] = []
@@ -429,24 +429,24 @@ func gameStop(args: [String]) {
         if jsonOutputEnabled {
             printJSON(["ok": true, "stopped": stopped, "count": stopped.count])
         } else {
-            success("已请求停止 \(stopped.count) 个实例")
+            success(L("已请求停止 %@ 个实例", stopped.count))
         }
         return
     }
 
     guard let instance = args.first else {
-        fail("用法错误：缺少 <versionOrInstance>")
+        fail(localizeText("用法错误：缺少 <versionOrInstance>"))
         return
     }
     var state = loadProcessState()
     guard let pid = state.pidByInstance[instance] else {
-        fail("未找到该实例的运行进程记录: \(instance)")
+        fail(L("未找到该实例的运行进程记录: %@", instance))
         return
     }
     guard isProcessRunning(pid) else {
         state.pidByInstance.removeValue(forKey: instance)
         saveProcessState(state)
-        fail("实例进程不存在: \(instance)")
+        fail(L("实例进程不存在: %@", instance))
         return
     }
 
@@ -461,27 +461,27 @@ func gameStop(args: [String]) {
     if jsonOutputEnabled {
         printJSON(["ok": true, "instance": instance, "pid": Int(pid), "stopped": true])
     } else {
-        success("已停止实例: \(instance)")
+        success(L("已停止实例: %@", instance))
     }
 }
 
 func gameDelete(args: [String]) {
     guard let name = args.first else {
-        fail("用法错误：缺少 <name>")
+        fail(localizeText("用法错误：缺少 <name>"))
         return
     }
 
     let dir = profileRoot().appendingPathComponent(name, isDirectory: true)
     guard fm.fileExists(atPath: dir.path) else {
-        fail("实例不存在: \(name)")
+        fail(L("实例不存在: %@", name))
         return
     }
 
     do {
         try fm.removeItem(at: dir)
-        success("已删除实例: \(name)")
+        success(L("已删除实例: %@", name))
     } catch {
-        fail("删除实例失败: \(error.localizedDescription)")
+        fail(L("删除实例失败: %@", error.localizedDescription))
     }
 }
 
@@ -540,21 +540,21 @@ func gameCreate(args: [String]) {
     let modLoader: String
     if let provided = valueOf("--modloader", in: args) {
         guard let normalized = normalizeModLoader(provided) else {
-            fail("无效 --modloader：仅支持 vanilla/fabric/forge/neoforge/quilt")
+            fail(localizeText("无效 --modloader：仅支持 vanilla/fabric/forge/neoforge/quilt"))
             return
         }
         modLoader = normalized
     } else {
         guard isInteractive else {
-            fail("缺少 --modloader（非交互终端请显式指定）")
+            fail(localizeText("缺少 --modloader（非交互终端请显式指定）"))
             return
         }
         guard let picked = chooseOptionInteractively(
-            title: "请选择 Mod Loader",
+            title: localizeText("请选择 Mod Loader"),
             header: "MODLOADER",
             options: ["vanilla", "fabric", "forge", "neoforge", "quilt"]
         ) else {
-            fail("已取消创建：未选择 Mod Loader")
+            fail(localizeText("已取消创建：未选择 Mod Loader"))
             return
         }
         modLoader = picked
@@ -565,20 +565,20 @@ func gameCreate(args: [String]) {
         gameVersion = provided
     } else {
         guard isInteractive else {
-            fail("缺少 --gameversion（非交互终端请显式指定）")
+            fail(localizeText("缺少 --gameversion（非交互终端请显式指定）"))
             return
         }
         let versions = fetchMinecraftVersionsForCreate()
         guard !versions.isEmpty else {
-            fail("无法获取可选游戏版本，请显式传入 --gameversion")
+            fail(localizeText("无法获取可选游戏版本，请显式传入 --gameversion"))
             return
         }
         guard let picked = chooseOptionInteractively(
-            title: "请选择游戏版本",
+            title: localizeText("请选择游戏版本"),
             header: "GAME VERSION",
             options: versions
         ) else {
-            fail("已取消创建：未选择游戏版本")
+            fail(localizeText("已取消创建：未选择游戏版本"))
             return
         }
         gameVersion = picked
@@ -589,20 +589,20 @@ func gameCreate(args: [String]) {
         name = provided
     } else {
         guard isInteractive else {
-            fail("缺少 --name（非交互终端请显式指定）")
+            fail(localizeText("缺少 --name（非交互终端请显式指定）"))
             return
         }
         let suggested = suggestedInstanceNames(gameVersion: gameVersion, modLoader: modLoader).first ?? gameVersion
-        let entered = prompt("输入实例名", defaultValue: suggested).trimmingCharacters(in: .whitespacesAndNewlines)
+        let entered = prompt(localizeText("输入实例名"), defaultValue: suggested).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !entered.isEmpty else {
-            fail("实例名不能为空")
+            fail(localizeText("实例名不能为空"))
             return
         }
         name = entered
     }
 
     if listInstances().contains(name) {
-        fail("实例已存在: \(name)")
+        fail(L("实例已存在: %@", name))
         return
     }
 
@@ -611,13 +611,13 @@ func gameCreate(args: [String]) {
 
     // 本地直装：vanilla/fabric/quilt/forge/neoforge
     if ["vanilla", "fabric", "quilt", "forge", "neoforge"].contains(modLoader) {
-        renderer.start(title: "本地创建实例")
+        renderer.start(title: localizeText("本地创建实例"))
         if let localErr = localCreateFullInstance(instance: name, gameVersion: gameVersion, modLoader: modLoader) {
-            renderer.finish(success: false, message: "本地创建失败")
-            fail("实例创建失败：\(localErr)")
+            renderer.finish(success: false, message: localizeText("本地创建失败"))
+            fail(L("实例创建失败：%@", localErr))
             return
         }
-        renderer.finish(success: true, message: "本地创建完成")
+        renderer.finish(success: true, message: localizeText("本地创建完成"))
         if jsonOutputEnabled {
             printJSON([
                 "ok": true,
@@ -625,16 +625,16 @@ func gameCreate(args: [String]) {
                 "gameVersion": gameVersion,
                 "modLoader": modLoader,
                 "mode": "local-full",
-                "message": "已在 CLI 内完成创建与下载",
+                "message": localizeText("已在 CLI 内完成创建与下载"),
             ])
         } else {
-            success("已在 CLI 内完成实例创建: \(name) (MC=\(gameVersion), Loader=\(modLoader))")
+            success(L("已在 CLI 内完成实例创建: %@ (MC=%@, Loader=%@)", name, gameVersion, modLoader))
         }
         return
     }
 
-    renderer.finish(success: false, message: "创建失败")
-    fail("实例创建失败：不支持的加载器 \(modLoader)")
+    renderer.finish(success: false, message: localizeText("创建失败"))
+    fail(L("实例创建失败：不支持的加载器 %@", modLoader))
 }
 
 func handleAccount(args: [String]) {
@@ -677,7 +677,7 @@ func handleAccount(args: [String]) {
 
         var store = loadAccounts()
         if store.players.isEmpty {
-            warn("无账号")
+            warn(localizeText("无账号"))
             return
         }
 
@@ -703,7 +703,7 @@ func accountCreate(args: [String]) {
     if args.contains("-microsoft") {
         let showProgress = !jsonOutputEnabled && isatty(STDOUT_FILENO) == 1
         let renderer = InstallProgressRenderer(enabled: showProgress)
-        renderer.start(title: "开始 Microsoft 登录")
+        renderer.start(title: localizeText("开始 Microsoft 登录"))
         let semaphore = DispatchSemaphore(value: 0)
         var authResult: Result<(MinecraftProfileResponse, AuthCredential), Error>?
         Task {
@@ -723,7 +723,7 @@ func accountCreate(args: [String]) {
         while semaphore.wait(timeout: .now() + 1) == .timedOut {
             elapsed += 1
             let p = min(0.95, 0.1 + (elapsed / 60.0) * 0.85)
-            renderer.update(progress: p, title: "等待 Microsoft 认证完成")
+            renderer.update(progress: p, title: localizeText("等待 Microsoft 认证完成"))
         }
 
         switch authResult {
@@ -760,30 +760,30 @@ func accountCreate(args: [String]) {
             }
             saveUserProfilesToAppDefaults(profiles)
             upsertAuthCredential(credential)
-            renderer.finish(success: true, message: "Microsoft 账号添加成功")
-            success("已创建正版账号: \(name)")
+            renderer.finish(success: true, message: localizeText("Microsoft 账号添加成功"))
+            success(L("已创建正版账号: %@", name))
         case .failure(let error):
-            renderer.finish(success: false, message: "Microsoft 登录失败")
+            renderer.finish(success: false, message: localizeText("Microsoft 登录失败"))
             if let cliError = error as? CLIAuthError {
                 fail(cliError.description)
             } else {
                 fail(error.localizedDescription)
             }
         case .none:
-            renderer.finish(success: false, message: "Microsoft 登录失败")
-            fail("Microsoft 登录失败")
+            renderer.finish(success: false, message: localizeText("Microsoft 登录失败"))
+            fail(localizeText("Microsoft 登录失败"))
         }
         return
     }
 
     guard let username = args.first, args.contains("-offline") else {
-        fail("用法: scl account create <username> -offline")
+        fail(localizeText("用法: scl account create <username> -offline"))
         return
     }
 
     var store = loadAccounts()
     if store.players.contains(username) {
-        fail("账号已存在: \(username)")
+        fail(L("账号已存在: %@", username))
         return
     }
 
@@ -793,7 +793,7 @@ func accountCreate(args: [String]) {
 
     var profiles = loadUserProfilesFromAppDefaults()
     if profiles.contains(where: { $0.name.caseInsensitiveCompare(username) == .orderedSame }) {
-        fail("账号已存在: \(username)")
+        fail(L("账号已存在: %@", username))
         return
     }
     let shouldCurrent = profiles.isEmpty || !profiles.contains(where: { $0.isCurrent })
@@ -808,12 +808,12 @@ func accountCreate(args: [String]) {
     )
     saveUserProfilesToAppDefaults(profiles)
 
-    success("已创建离线账号: \(username)")
+    success(L("已创建离线账号: %@", username))
 }
 
 func accountDelete(args: [String]) {
     guard let name = args.first else {
-        fail("用法: scl account delete <name>")
+        fail(localizeText("用法: scl account delete <name>"))
         return
     }
 
@@ -845,29 +845,29 @@ func accountDelete(args: [String]) {
     }
     saveUserProfilesToAppDefaults(profiles)
 
-    success("已删除账号: \(name)")
+    success(L("已删除账号: %@", name))
 }
 
 func accountSetDefault(args: [String]) {
     guard let name = args.first else {
-        fail("用法: scl account set-default <name>")
+        fail(localizeText("用法: scl account set-default <name>"))
         return
     }
-    setCurrentAccount(name: name, message: "已设置默认账号: \(name)")
+    setCurrentAccount(name: name, message: L("已设置默认账号: %@", name))
 }
 
 func accountUse(args: [String]) {
     guard let name = args.first else {
-        fail("用法: scl account use <name>")
+        fail(localizeText("用法: scl account use <name>"))
         return
     }
-    setCurrentAccount(name: name, message: "已切换账号: \(name)")
+    setCurrentAccount(name: name, message: L("已切换账号: %@", name))
 }
 
 private func setCurrentAccount(name: String, message: String) {
     var store = loadAccounts()
     guard store.players.contains(name) else {
-        fail("账号不存在: \(name)")
+        fail(L("账号不存在: %@", name))
         return
     }
 
@@ -900,13 +900,13 @@ private func setCurrentAccount(name: String, message: String) {
 
 func accountShow(args: [String]) {
     guard let name = args.first else {
-        fail("用法: scl account show <name>")
+        fail(localizeText("用法: scl account show <name>"))
         return
     }
 
     let store = loadAccounts()
     guard store.players.contains(name) else {
-        fail("账号不存在: \(name)")
+        fail(L("账号不存在: %@", name))
         return
     }
 
@@ -961,58 +961,58 @@ func installResource(
     let sem = DispatchSemaphore(value: 0)
     var resultText = ""
     let renderer = InstallProgressRenderer(enabled: showProgress)
-    renderer.start(title: "准备安装资源")
+    renderer.start(title: localizeText("准备安装资源"))
 
     Task {
         defer { sem.signal() }
         do {
             if type == "modpack" {
-                renderer.update(progress: 0.12, title: "解析整合包信息")
+                renderer.update(progress: 0.12, title: localizeText("解析整合包信息"))
                 let installResult = installModrinthModpack(
                     projectId: projectId,
                     version: version,
                     preferredName: customFileName
                 )
-                if installResult.hasPrefix("安装成功") || installResult.hasPrefix("已导入") {
+                if installResult.hasPrefix(localizeText("安装成功")) || installResult.hasPrefix(localizeText("已导入")) {
                     resultText = installResult
-                    renderer.finish(success: true, message: "安装成功")
+                    renderer.finish(success: true, message: localizeText("安装成功"))
                 } else {
                     resultText = installResult
-                    renderer.finish(success: false, message: "安装失败")
+                    renderer.finish(success: false, message: localizeText("安装失败"))
                 }
                 return
             }
 
-            renderer.update(progress: 0.08, title: "获取版本清单")
+            renderer.update(progress: 0.08, title: localizeText("获取版本清单"))
             let versionsURL = URL(string: "https://api.modrinth.com/v2/project/\(projectId)/version")!
             let (data, _) = try await URLSession.shared.data(from: versionsURL)
             let versions = try JSONDecoder().decode([ModrinthVersion].self, from: data)
-            renderer.update(progress: 0.18, title: "匹配目标版本")
+            renderer.update(progress: 0.18, title: localizeText("匹配目标版本"))
             guard let selected = versions.first(where: { version == nil || $0.id == version || $0.version_number == version }) else {
-                resultText = "未找到匹配版本"
-                renderer.finish(success: false, message: "未找到匹配版本")
+                resultText = localizeText("未找到匹配版本")
+                renderer.finish(success: false, message: localizeText("未找到匹配版本"))
                 return
             }
             guard let file = selected.files.first, let fileURL = URL(string: file.url) else {
-                resultText = "版本无可下载文件"
-                renderer.finish(success: false, message: "版本无可下载文件")
+                resultText = localizeText("版本无可下载文件")
+                renderer.finish(success: false, message: localizeText("版本无可下载文件"))
                 return
             }
 
-            renderer.update(progress: 0.45, title: "下载资源文件")
+            renderer.update(progress: 0.45, title: localizeText("下载资源文件"))
             let (tmp, _) = try await URLSession.shared.download(from: fileURL)
-            renderer.update(progress: 0.72, title: "写入实例目录")
+            renderer.update(progress: 0.72, title: localizeText("写入实例目录"))
             let installInstance = instance ?? ""
             let destDir = resourceDir(type: type, instance: installInstance)
             try fm.createDirectory(at: destDir, withIntermediateDirectories: true)
             let dest = destDir.appendingPathComponent(file.filename)
             try? fm.removeItem(at: dest)
             try fm.moveItem(at: tmp, to: dest)
-            resultText = "安装成功: \(dest.path)"
-            renderer.finish(success: true, message: "安装完成")
+            resultText = L("安装成功: %@", dest.path)
+            renderer.finish(success: true, message: localizeText("安装完成"))
         } catch {
-            resultText = "安装失败: \(error.localizedDescription)"
-            renderer.finish(success: false, message: "安装失败")
+            resultText = L("安装失败: %@", error.localizedDescription)
+            renderer.finish(success: false, message: localizeText("安装失败"))
         }
     }
 
@@ -1065,7 +1065,7 @@ func fetchResourceHits(query: String, type: String, limit: Int, page: Int) -> ([
         URLQueryItem(name: "offset", value: String(offset)),
         URLQueryItem(name: "facets", value: "[[\"project_type:\(type)\"]]")
     ]
-    guard let url = comps.url else { return ([], "构建搜索 URL 失败") }
+    guard let url = comps.url else { return ([], localizeText("构建搜索 URL 失败")) }
 
     let sem = DispatchSemaphore(value: 0)
     var hits: [ModrinthHit] = []
@@ -1082,6 +1082,520 @@ func fetchResourceHits(query: String, type: String, limit: Int, page: Int) -> ([
     }
     sem.wait()
     return (hits, errorText)
+}
+
+func fetchGlobalResourceHits(query: String, limit: Int, page: Int) -> ([ModrinthHit], String) {
+    var comps = URLComponents(string: "https://api.modrinth.com/v2/search")!
+    let safeLimit = max(1, min(100, limit))
+    let safePage = max(1, page)
+    let offset = (safePage - 1) * safeLimit
+    comps.queryItems = [
+        URLQueryItem(name: "query", value: query),
+        URLQueryItem(name: "limit", value: String(safeLimit)),
+        URLQueryItem(name: "offset", value: String(offset))
+    ]
+    guard let url = comps.url else { return ([], localizeText("构建搜索 URL 失败")) }
+
+    let sem = DispatchSemaphore(value: 0)
+    var hits: [ModrinthHit] = []
+    var errorText = ""
+    Task {
+        defer { sem.signal() }
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            let result = try JSONDecoder().decode(ModrinthSearchResult.self, from: data)
+            hits = result.hits
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+    sem.wait()
+    return (hits, errorText)
+}
+
+struct GlobalItem {
+    let kind: String
+    let name: String
+    let instance: String
+    let detail: String
+    let modrinth: ModrinthHit?
+    let path: String?
+}
+
+func buildGlobalItems(query: String, limit: Int, page: Int) -> ([GlobalItem], Bool, String) {
+    var items: [GlobalItem] = []
+    let needle = query.lowercased()
+    func matches(_ value: String) -> Bool {
+        value.lowercased().contains(needle)
+    }
+
+    let safeLimit = max(1, limit)
+    let localCap = min(50, safeLimit)
+    let includeLocal = page == 1
+
+    if includeLocal {
+        let instances = listInstances()
+        for instance in instances where matches(instance) {
+            items.append(GlobalItem(kind: "instance", name: instance, instance: "", detail: "", modrinth: nil, path: nil))
+            if items.count >= localCap { break }
+        }
+
+        let resourceDirs = ["mods", "resourcepacks", "shaderpacks", "datapacks"]
+        if items.count < localCap {
+            for instance in instances {
+                if items.count >= localCap { break }
+                for dirName in resourceDirs {
+                    if items.count >= localCap { break }
+                    let dir = profileRoot().appendingPathComponent(instance, isDirectory: true).appendingPathComponent(dirName, isDirectory: true)
+                    guard let entries = try? fm.contentsOfDirectory(atPath: dir.path) else { continue }
+                    for entry in entries where matches(entry) {
+                        items.append(GlobalItem(kind: dirName, name: entry, instance: instance, detail: dirName, modrinth: nil, path: dir.appendingPathComponent(entry).path))
+                        if items.count >= localCap { break }
+                    }
+                }
+            }
+        }
+
+        if items.count < localCap {
+            let store = loadAccounts()
+            for name in store.players where matches(name) {
+                let detail = store.current == name ? "current" : ""
+                items.append(GlobalItem(kind: "account", name: name, instance: "", detail: detail, modrinth: nil, path: nil))
+                if items.count >= localCap { break }
+            }
+        }
+
+        if items.count < localCap {
+            for spec in appStorageSpecs {
+                let value = getAppStorageValue(key: spec.key) ?? ""
+                if matches(spec.key) || matches(value) {
+                    items.append(GlobalItem(kind: "config", name: spec.key, instance: "", detail: value, modrinth: nil, path: nil))
+                    if items.count >= localCap { break }
+                }
+            }
+        }
+    }
+
+    let localCount = items.count
+    let fetched = fetchGlobalResourceHits(query: query, limit: safeLimit, page: page)
+    if !fetched.1.isEmpty {
+        return (items, false, fetched.1)
+    }
+    for hit in fetched.0 {
+        items.append(GlobalItem(kind: "modrinth", name: hit.title, instance: "", detail: hit.project_id, modrinth: hit, path: nil))
+    }
+    let remoteCount = fetched.0.count
+    let includeLocalCount = includeLocal ? localCount : 0
+    let remoteOnlyCount = max(0, remoteCount - includeLocalCount)
+    let hasMoreRemote = remoteOnlyCount >= safeLimit
+    return (items, hasMoreRemote, "")
+}
+
+func handleSearch(args: [String]) {
+    if args.isEmpty || args.contains("--help") || args.contains("-h") {
+        printSearchHelp()
+        return
+    }
+    let positional = args.filter { !$0.hasPrefix("-") }
+    let query = positional.joined(separator: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+    if query.isEmpty {
+        fail(localizeText("用法错误：缺少 <keyword>"))
+        return
+    }
+
+    let limit = max(1, Int(valueOf("--limit", in: args) ?? "") ?? 50)
+    let page = max(1, Int(valueOf("--page", in: args) ?? "") ?? 1)
+
+    let (items, hasMoreRemote, errorText) = buildGlobalItems(query: query, limit: limit, page: page)
+    if !errorText.isEmpty {
+        fail(L("搜索失败: %@", errorText))
+        return
+    }
+
+    if jsonOutputEnabled {
+        let jsonItems = items.map {
+            [
+                "type": $0.kind,
+                "name": $0.name,
+                "instance": $0.instance,
+                "detail": $0.detail,
+                "path": $0.path ?? "",
+                "projectId": $0.modrinth?.project_id ?? ""
+            ]
+        }
+        printJSON([
+            "ok": true,
+            "type": "search",
+            "query": query,
+            "count": jsonItems.count,
+            "page": page,
+            "hasMoreRemote": hasMoreRemote,
+            "items": jsonItems
+        ])
+        return
+    }
+
+    let isInteractive = isatty(STDIN_FILENO) == 1 && isatty(STDOUT_FILENO) == 1
+    if !isInteractive {
+        if items.isEmpty {
+            warn(localizeText("无搜索结果"))
+            return
+        }
+        let headers = [localizeText("类型"), localizeText("名称"), localizeText("实例"), localizeText("详情")]
+        let rows = items.map { [$0.kind, $0.name, $0.instance, $0.detail] }
+        printTable(headers: headers, rows: rows)
+        return
+    }
+
+    runGlobalSearchTUI(items: items, query: query, limit: limit, initialPage: page, hasMoreRemote: hasMoreRemote)
+}
+
+func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialPage: Int, hasMoreRemote: Bool) {
+    enum View {
+        case list
+        case detail
+        case install
+    }
+
+    if items.isEmpty {
+        warn(localizeText("无搜索结果"))
+        return
+    }
+
+    var items = items
+    var view: View = .list
+    var selectedIndex = 0
+    var versionIndex = 0
+    var lastWidth = -1
+    var needsRender = true
+    var remotePage = max(1, initialPage)
+    var remoteHasMore = hasMoreRemote
+    var detailCache: [String: ModrinthProjectDetail] = [:]
+    var versionsCache: [String: [ModrinthVersion]] = [:]
+    let cfg = loadConfig()
+    var selectedInstance = cfg.defaultInstance.isEmpty ? (listInstances().first ?? "") : cfg.defaultInstance
+    var raw = TerminalRawMode()
+    guard raw.enable() else {
+        let headers = [localizeText("类型"), localizeText("名称"), localizeText("实例"), localizeText("详情")]
+        let rows = items.map { [$0.kind, $0.name, $0.instance, $0.detail] }
+        printTable(headers: headers, rows: rows)
+        return
+    }
+    defer { raw.disable() }
+    func openURL(_ url: URL) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = [url.absoluteString]
+        try? process.run()
+    }
+
+    func renderList() {
+        let pageSize = interactivePageSize()
+        let pageInfo = pagedBounds(total: items.count, selectedIndex: selectedIndex, pageSize: pageSize)
+        clearScreen()
+        let pageItems = Array(items[pageInfo.start..<pageInfo.end])
+        print(stylize(localizeText("全局搜索"), ANSI.bold + ANSI.cyan))
+        print(stylize(L("%@=%@", localizeText("关键词"), query), ANSI.gray))
+        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+        print(stylize(L("search_remote_page", remotePage, remoteHasMore ? "+" : ""), ANSI.gray))
+        print("")
+        let rows: [[String]] = pageItems.enumerated().map { idx, item in
+            let typeText: String
+            if let hit = item.modrinth {
+                let detailType = detailCache[hit.project_id]?.project_type
+                typeText = detailType ?? "modrinth"
+            } else {
+                typeText = item.kind
+            }
+            return [
+                String(pageInfo.start + idx + 1),
+                typeText,
+                trimColumn(item.name, max: 36),
+                trimColumn(item.instance, max: 14),
+                trimColumn(item.detail, max: 18)
+            ]
+        }
+        printSelectableTable(headers: ["#", localizeText("类型"), localizeText("名称"), localizeText("实例"), localizeText("详情")], rows: rows, selectedIndex: selectedIndex - pageInfo.start)
+        print("")
+        print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · q/Esc 退出"), ANSI.yellow))
+    }
+
+    func renderDetail(for item: GlobalItem) {
+        clearScreen()
+        if let hit = item.modrinth {
+            let detail = detailCache[hit.project_id]
+            print(stylize(localizeText("资源详情"), ANSI.bold + ANSI.cyan))
+            print(stylize(localizeText("Enter 打开安装版本选择 · o 打开网页 · Esc 返回列表 · q 退出"), ANSI.yellow))
+            print("")
+            let categories = detail?.categories?.joined(separator: ", ") ?? hit.categories?.joined(separator: ", ") ?? "-"
+            let versionsCount = detail?.versions?.count ?? hit.versions?.count ?? 0
+            printTable(headers: ["KEY", "VALUE"], rows: [
+                ["id", hit.project_id],
+                ["title", detail?.title ?? hit.title],
+                ["author", hit.author ?? "-"],
+                ["downloads", String(detail?.downloads ?? hit.downloads)],
+                ["followers", String(detail?.followers ?? hit.follows ?? 0)],
+                ["type", detail?.project_type ?? "-"],
+                ["categories", categories],
+                ["versions", String(versionsCount)],
+                ["updated", detail?.updated ?? "-"],
+            ])
+            let desc = detail?.description ?? hit.description ?? ""
+            if !desc.isEmpty {
+                print("")
+                print(stylize(localizeText("简介:"), ANSI.blue))
+                print(desc)
+            }
+            return
+        }
+
+        if item.kind == "instance" {
+            print(stylize(localizeText("实例状态"), ANSI.bold + ANSI.cyan))
+            print(stylize(localizeText("Enter/Esc 返回列表 · q 退出"), ANSI.yellow))
+            print("")
+            printInstanceOverview(instance: item.name)
+            return
+        }
+
+        print(stylize(localizeText("实例详情"), ANSI.bold + ANSI.cyan))
+        print(stylize(localizeText("Enter/Esc 返回列表 · q 退出"), ANSI.yellow))
+        print("")
+        printTable(headers: ["KEY", "VALUE"], rows: [
+            ["type", item.kind],
+            ["name", item.name],
+            ["instance", item.instance],
+            ["detail", item.detail],
+            ["path", item.path ?? "-"]
+        ])
+    }
+
+    func renderInstall(for hit: ModrinthHit, versions: [ModrinthVersion]) {
+        let pageSize = interactivePageSize()
+        let pageInfo = pagedBounds(total: versions.count, selectedIndex: versionIndex, pageSize: pageSize)
+        clearScreen()
+        print(stylize(localizeText("安装对话框"), ANSI.bold + ANSI.cyan))
+        print(stylize(localizeText("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出"), ANSI.yellow))
+        let detail = detailCache[hit.project_id]
+        let type = detail?.project_type ?? "mod"
+        let targetText = type == "modpack"
+            ? localizeText("本地安装整合包")
+            : L("%@=%@", localizeText("实例"), selectedInstance.isEmpty ? localizeText("<未选择>") : selectedInstance)
+        print(stylize(L("%@=%@  %@  %@=%@", localizeText("项目"), hit.title, targetText, localizeText("类型"), type), ANSI.gray))
+        if type != "modpack", !selectedInstance.isEmpty {
+            let record = queryGameRecord(instance: selectedInstance)
+            let gv = (record?["gameVersion"] as? String) ?? "-"
+            let loader = (record?["modLoader"] as? String) ?? "-"
+            print(stylize(L("%@: MC=%@ Loader=%@", localizeText("过滤条件"), gv, loader), ANSI.gray))
+        }
+        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+        print("")
+        if versions.isEmpty {
+            print(stylize(localizeText("无可用版本（与实例版本不匹配）"), ANSI.red))
+            return
+        }
+        let pageItems = Array(versions[pageInfo.start..<pageInfo.end])
+        let rows = pageItems.enumerated().map { idx, ver in
+            [
+                String(pageInfo.start + idx + 1),
+                trimColumn(ver.version_number, max: 22),
+                ver.version_type ?? "-",
+                trimColumn(ver.loaders?.joined(separator: ",") ?? "-", max: 20),
+                trimColumn(ver.game_versions?.prefix(3).joined(separator: ",") ?? "-", max: 20),
+                trimColumn(ver.date_published ?? "-", max: 19)
+            ]
+        }
+        printSelectableTable(
+            headers: ["#", "VERSION", "TYPE", "LOADERS", "MC", "PUBLISHED"],
+            rows: rows,
+            selectedIndex: versionIndex - pageInfo.start
+        )
+    }
+
+    func versionsForCurrent() -> [ModrinthVersion] {
+        guard let hit = items[selectedIndex].modrinth else { return [] }
+        if versionsCache[hit.project_id] == nil {
+            versionsCache[hit.project_id] = fetchProjectVersions(projectId: hit.project_id)
+        }
+        let detail = detailCache[hit.project_id]
+        let type = detail?.project_type ?? "mod"
+        let rawVersions = versionsCache[hit.project_id] ?? []
+        if type == "modpack" { return rawVersions }
+        return filterVersionsByInstance(versions: rawVersions, instance: selectedInstance, resourceType: type)
+    }
+
+    while true {
+        let current = items[selectedIndex]
+        let width = terminalColumns()
+        if width != lastWidth {
+            lastWidth = width
+            needsRender = true
+        }
+        if needsRender {
+            switch view {
+            case .list:
+                renderList()
+            case .detail:
+                if let hit = current.modrinth {
+                    if detailCache[hit.project_id] == nil, let d = fetchProjectDetail(projectId: hit.project_id) {
+                        detailCache[hit.project_id] = d
+                    }
+                    if versionsCache[hit.project_id] == nil {
+                        versionsCache[hit.project_id] = fetchProjectVersions(projectId: hit.project_id)
+                    }
+                }
+                renderDetail(for: current)
+            case .install:
+                guard let hit = current.modrinth else { view = .detail; needsRender = true; continue }
+                let versions = versionsForCurrent()
+                renderInstall(for: hit, versions: versions)
+            }
+            needsRender = false
+        }
+
+        let key = readInputKey(timeoutMs: 160)
+        switch (view, key) {
+        case (_, .quit), (_, .escape):
+            if view == .detail || view == .install {
+                view = .list
+                needsRender = true
+            } else {
+                clearScreen()
+                return
+            }
+        case (.list, .down):
+            selectedIndex = min(items.count - 1, selectedIndex + 1)
+            needsRender = true
+        case (.list, .up):
+            selectedIndex = max(0, selectedIndex - 1)
+            needsRender = true
+        case (.list, .right):
+            let pageSize = interactivePageSize()
+            let pageInfo = pagedBounds(total: items.count, selectedIndex: selectedIndex, pageSize: pageSize)
+            if pageInfo.page < pageInfo.maxPage {
+                selectedIndex = min(items.count - 1, (pageInfo.page + 1) * pageSize)
+                needsRender = true
+            } else if remoteHasMore {
+                remotePage += 1
+                let fetched = buildGlobalItems(query: query, limit: limit, page: remotePage)
+                if !fetched.2.isEmpty {
+                    fail(L("搜索失败: %@", fetched.2))
+                    remotePage = max(1, remotePage - 1)
+                } else {
+                    items = fetched.0
+                    remoteHasMore = fetched.1
+                    selectedIndex = 0
+                    view = .list
+                    needsRender = true
+                }
+            }
+        case (.list, .left):
+            let pageSize = interactivePageSize()
+            let pageInfo = pagedBounds(total: items.count, selectedIndex: selectedIndex, pageSize: pageSize)
+            if pageInfo.page > 0 {
+                selectedIndex = (pageInfo.page - 1) * pageSize
+                needsRender = true
+            } else if remotePage > 1 {
+                remotePage -= 1
+                let fetched = buildGlobalItems(query: query, limit: limit, page: remotePage)
+                if !fetched.2.isEmpty {
+                    fail(L("搜索失败: %@", fetched.2))
+                    remotePage += 1
+                } else {
+                    items = fetched.0
+                    remoteHasMore = fetched.1
+                    selectedIndex = 0
+                    view = .list
+                    needsRender = true
+                }
+            }
+        case (.list, .enter):
+            view = .detail
+            needsRender = true
+        case (.detail, .enter):
+            if current.modrinth != nil {
+                view = .install
+                needsRender = true
+            }
+        case (.detail, .open):
+            if let hit = current.modrinth {
+                let url = URL(string: "https://modrinth.com/project/\(hit.project_id)")
+                if let url {
+                    raw.disable()
+                    openURL(url)
+                    _ = raw.enable()
+                }
+            }
+        case (.install, .down):
+            let versions = versionsForCurrent()
+            if !versions.isEmpty {
+                versionIndex = min(versions.count - 1, versionIndex + 1)
+                needsRender = true
+            }
+        case (.install, .up):
+            versionIndex = max(0, versionIndex - 1)
+            needsRender = true
+        case (.install, .right):
+            let versions = versionsForCurrent()
+            let pageSize = interactivePageSize()
+            let pageInfo = pagedBounds(total: versions.count, selectedIndex: versionIndex, pageSize: pageSize)
+            if pageInfo.page < pageInfo.maxPage {
+                versionIndex = min(max(0, versions.count - 1), (pageInfo.page + 1) * pageSize)
+                needsRender = true
+            }
+        case (.install, .left):
+            let versions = versionsForCurrent()
+            let pageSize = interactivePageSize()
+            let pageInfo = pagedBounds(total: versions.count, selectedIndex: versionIndex, pageSize: pageSize)
+            if pageInfo.page > 0 && !versions.isEmpty {
+                versionIndex = (pageInfo.page - 1) * pageSize
+                needsRender = true
+            }
+        case (.install, .enter):
+            guard let hit = current.modrinth else { break }
+            let detail = detailCache[hit.project_id]
+            let type = detail?.project_type ?? "mod"
+            if type != "modpack", selectedInstance.isEmpty {
+                raw.disable()
+                if let picked = chooseInstanceInteractively(title: localizeText("请选择要安装到的实例")) {
+                    selectedInstance = picked
+                }
+                _ = raw.enable()
+            }
+            let versions = versionsForCurrent()
+            guard !versions.isEmpty else { break }
+            let selectedVersion = versions[min(versionIndex, versions.count - 1)]
+            clearScreen()
+            info(L("正在安装 %@ @ %@ ...", hit.title, selectedVersion.version_number))
+            var customFileName: String? = nil
+            if type == "modpack" {
+                raw.disable()
+                print("")
+                print(stylize(localizeText("输入整合包实例名（可留空使用默认）: "), ANSI.blue), terminator: "")
+                let line = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                _ = raw.enable()
+                if !line.isEmpty { customFileName = line }
+            }
+            let result = installResource(
+                projectId: hit.project_id,
+                version: selectedVersion.id,
+                instance: type == "modpack" ? nil : selectedInstance,
+                type: type,
+                customFileName: customFileName,
+                showProgress: true
+            )
+            if result.hasPrefix(localizeText("安装成功")) || result.hasPrefix(localizeText("已导入")) {
+                success(result)
+            } else {
+                fail(result)
+            }
+            print(stylize(localizeText("按任意键返回详情页..."), ANSI.gray))
+            _ = readInputKey(timeoutMs: nil)
+            view = .detail
+            needsRender = true
+        default:
+            break
+        }
+    }
 }
 
 func runResourceSearchTUI(
@@ -1106,9 +1620,11 @@ func runResourceSearchTUI(
     var versionIndex = 0
     var lastWidth = -1
     var needsRender = true
+    var remotePage = 1
+    var remoteHasMore = initialHits.count >= limit
     var detailCache: [String: ModrinthProjectDetail] = [:]
     var versionsCache: [String: [ModrinthVersion]] = [:]
-    var statusLine = "↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · t 切类型 · / 改关键词 · q 退出"
+    var statusLine = localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · t 切类型 · / 改关键词 · q 退出")
 
     func filteredVersions(for projectId: String) -> [ModrinthVersion] {
         let rawVersions = versionsCache[projectId] ?? []
@@ -1120,10 +1636,13 @@ func runResourceSearchTUI(
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: hits.count, selectedIndex: selectedIndex, pageSize: pageSize)
         clearScreen()
-        print(stylize("资源搜索结果（交互模式）", ANSI.bold + ANSI.cyan))
-        let targetText = type == "modpack" ? "本地安装整合包" : "目标实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
-        print(stylize("关键词=\(query) 类型=\(type) \(targetText)", ANSI.gray))
-        print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
+        print(stylize(localizeText("资源搜索结果（交互模式）"), ANSI.bold + ANSI.cyan))
+        let targetText = type == "modpack"
+            ? localizeText("本地安装整合包")
+            : L("%@=%@", localizeText("目标实例"), selectedInstance.isEmpty ? localizeText("<未选择>") : selectedInstance)
+        print(stylize(L("%@=%@ %@=%@ %@", localizeText("关键词"), query, localizeText("类型"), type, targetText), ANSI.gray))
+        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+        print(stylize(L("search_remote_page", remotePage, remoteHasMore ? "+" : ""), ANSI.gray))
         print("")
         let pageItems = Array(hits[pageInfo.start..<pageInfo.end])
         let rows = pageItems.enumerated().map { idx, item in
@@ -1148,8 +1667,8 @@ func runResourceSearchTUI(
     func renderDetail(for hit: ModrinthHit) {
         clearScreen()
         let detail = detailCache[hit.project_id]
-        print(stylize("资源详情", ANSI.bold + ANSI.cyan))
-        print(stylize("Enter 打开安装版本选择 · Esc 返回列表 · q 退出", ANSI.yellow))
+        print(stylize(localizeText("资源详情"), ANSI.bold + ANSI.cyan))
+        print(stylize(localizeText("Enter 打开安装版本选择 · Esc 返回列表 · q 退出"), ANSI.yellow))
         print("")
         let categories = detail?.categories?.joined(separator: ", ") ?? hit.categories?.joined(separator: ", ") ?? "-"
         let versionsCount = detail?.versions?.count ?? hit.versions?.count ?? 0
@@ -1166,7 +1685,7 @@ func runResourceSearchTUI(
         let desc = detail?.description ?? hit.description ?? ""
         if !desc.isEmpty {
             print("")
-            print(stylize("简介:", ANSI.blue))
+            print(stylize(localizeText("简介:"), ANSI.blue))
             print(desc)
         }
     }
@@ -1175,20 +1694,22 @@ func runResourceSearchTUI(
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: versions.count, selectedIndex: versionIndex, pageSize: pageSize)
         clearScreen()
-        print(stylize("安装对话框", ANSI.bold + ANSI.cyan))
-        print(stylize("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出", ANSI.yellow))
-        let targetText = type == "modpack" ? "本地安装整合包" : "实例=\(selectedInstance.isEmpty ? "<未选择>" : selectedInstance)"
-        print(stylize("项目=\(hit.title)  \(targetText)  类型=\(type)", ANSI.gray))
+        print(stylize(localizeText("安装对话框"), ANSI.bold + ANSI.cyan))
+        print(stylize(localizeText("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出"), ANSI.yellow))
+        let targetText = type == "modpack"
+            ? localizeText("本地安装整合包")
+            : L("%@=%@", localizeText("实例"), selectedInstance.isEmpty ? localizeText("<未选择>") : selectedInstance)
+        print(stylize(L("%@=%@  %@  %@=%@", localizeText("项目"), hit.title, targetText, localizeText("类型"), type), ANSI.gray))
         if type != "modpack", !selectedInstance.isEmpty {
             let record = queryGameRecord(instance: selectedInstance)
             let gv = (record?["gameVersion"] as? String) ?? "-"
             let loader = (record?["modLoader"] as? String) ?? "-"
-            print(stylize("过滤条件: MC=\(gv) Loader=\(loader)", ANSI.gray))
+            print(stylize(L("%@: MC=%@ Loader=%@", localizeText("过滤条件"), gv, loader), ANSI.gray))
         }
-        print(stylize("第 \(pageInfo.page + 1)/\(pageInfo.maxPage + 1) 页", ANSI.gray))
+        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
         print("")
         if versions.isEmpty {
-            print(stylize("无可用版本（与实例版本不匹配）", ANSI.red))
+            print(stylize(localizeText("无可用版本（与实例版本不匹配）"), ANSI.red))
             return
         }
         let pageItems = Array(versions[pageInfo.start..<pageInfo.end])
@@ -1211,7 +1732,7 @@ func runResourceSearchTUI(
 
     var raw = TerminalRawMode()
     guard raw.enable() else {
-        warn("当前终端不支持交互模式，已降级到普通列表输出")
+        warn(localizeText("当前终端不支持交互模式，已降级到普通列表输出"))
         let rows = hits.enumerated().map { [String($0.offset + 1), $0.element.project_id, $0.element.title, String($0.element.downloads)] }
         printTable(headers: ["#", "ID", "TITLE", "DOWNLOADS"], rows: rows)
         return
@@ -1221,24 +1742,24 @@ func runResourceSearchTUI(
     while true {
         if hits.isEmpty {
             clearScreen()
-            print(stylize("无搜索结果，按 / 修改关键词，按 t 切换类型，q 退出", ANSI.yellow))
+            print(stylize(localizeText("无搜索结果，按 / 修改关键词，按 t 切换类型，q 退出"), ANSI.yellow))
             let key = readInputKey(timeoutMs: 160)
             if key == .quit { clearScreen(); return }
             if key == .changeType {
-                if let selectedType = chooseResourceTypeInteractively(title: "切换资源类型") {
+                if let selectedType = chooseResourceTypeInteractively(title: localizeText("切换资源类型")) {
                     type = selectedType
                     let fetched = fetchResourceHits(query: query, type: type, limit: limit, page: 1)
                     if fetched.1.isEmpty {
                         hits = fetched.0
                         selectedIndex = 0
                     } else {
-                        fail("搜索失败: \(fetched.1)")
+                        fail(L("搜索失败: %@", fetched.1))
                     }
                 }
             } else if key == .changeQuery {
                 raw.disable()
                 print("")
-                print(stylize("输入新关键词并回车（空输入取消）: ", ANSI.blue), terminator: "")
+                print(stylize(localizeText("输入新关键词并回车（空输入取消）: "), ANSI.blue), terminator: "")
                 let line = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 _ = raw.enable()
                 if !line.isEmpty {
@@ -1248,7 +1769,7 @@ func runResourceSearchTUI(
                         hits = fetched.0
                         selectedIndex = 0
                     } else {
-                        fail("搜索失败: \(fetched.1)")
+                        fail(L("搜索失败: %@", fetched.1))
                     }
                 }
             }
@@ -1300,6 +1821,18 @@ func runResourceSearchTUI(
             if pageInfo.page < pageInfo.maxPage {
                 selectedIndex = min(hits.count - 1, (pageInfo.page + 1) * pageSize)
                 needsRender = true
+            } else if remoteHasMore {
+                let fetched = fetchResourceHits(query: query, type: type, limit: limit, page: remotePage + 1)
+                if fetched.1.isEmpty {
+                    hits = fetched.0
+                    remotePage += 1
+                    remoteHasMore = fetched.0.count >= limit
+                    selectedIndex = 0
+                    view = .list
+                    needsRender = true
+                } else {
+                    fail(L("搜索失败: %@", fetched.1))
+                }
             }
         case (.list, .left):
             let pageSize = interactivePageSize()
@@ -1307,29 +1840,43 @@ func runResourceSearchTUI(
             if pageInfo.page > 0 {
                 selectedIndex = (pageInfo.page - 1) * pageSize
                 needsRender = true
+            } else if remotePage > 1 {
+                let fetched = fetchResourceHits(query: query, type: type, limit: limit, page: remotePage - 1)
+                if fetched.1.isEmpty {
+                    hits = fetched.0
+                    remotePage -= 1
+                    remoteHasMore = fetched.0.count >= limit
+                    selectedIndex = 0
+                    view = .list
+                    needsRender = true
+                } else {
+                    fail(L("搜索失败: %@", fetched.1))
+                }
             }
         case (.list, .enter):
             view = .detail
-            statusLine = "Esc 返回列表 · Enter 进入安装"
+            statusLine = localizeText("Esc 返回列表 · Enter 进入安装")
             needsRender = true
         case (.list, .changeType):
-            if let selectedType = chooseResourceTypeInteractively(title: "切换资源类型") {
+            if let selectedType = chooseResourceTypeInteractively(title: localizeText("切换资源类型")) {
                 type = selectedType
                 let fetched = fetchResourceHits(query: query, type: type, limit: limit, page: 1)
                 if fetched.1.isEmpty {
                     hits = fetched.0
                     selectedIndex = 0
+                    remotePage = 1
+                    remoteHasMore = fetched.0.count >= limit
                     view = .list
-                    statusLine = "↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · t 切类型 · / 改关键词 · q 退出"
+                    statusLine = localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · t 切类型 · / 改关键词 · q 退出")
                     needsRender = true
                 } else {
-                    fail("搜索失败: \(fetched.1)")
+                    fail(L("搜索失败: %@", fetched.1))
                 }
             }
         case (.list, .changeQuery):
             raw.disable()
             print("")
-            print(stylize("输入新关键词并回车（空输入取消）: ", ANSI.blue), terminator: "")
+            print(stylize(localizeText("输入新关键词并回车（空输入取消）: "), ANSI.blue), terminator: "")
             let line = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             _ = raw.enable()
             if !line.isEmpty {
@@ -1338,27 +1885,29 @@ func runResourceSearchTUI(
                 if fetched.1.isEmpty {
                     hits = fetched.0
                     selectedIndex = 0
+                    remotePage = 1
+                    remoteHasMore = fetched.0.count >= limit
                     view = .list
-                    statusLine = "↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · t 切类型 · / 改关键词 · q 退出"
+                    statusLine = localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · t 切类型 · / 改关键词 · q 退出")
                     needsRender = true
                 } else {
-                    fail("搜索失败: \(fetched.1)")
+                    fail(L("搜索失败: %@", fetched.1))
                 }
             }
             needsRender = true
         case (.detail, .escape):
             view = .list
-            statusLine = "↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 进入详情 · q 退出"
+            statusLine = localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 进入详情 · q 退出")
             needsRender = true
         case (.detail, .enter):
             if type != "modpack" {
                 let projectVersions = versionsCache[current.project_id] ?? []
                 guard let picked = chooseCompatibleInstanceInteractively(
-                    title: "请选择要安装到的实例（仅显示可安装匹配）",
+                    title: localizeText("请选择要安装到的实例（仅显示可安装匹配）"),
                     versions: projectVersions,
                     resourceType: type
                 ) else {
-                    statusLine = "已取消安装：未选择实例"
+                    statusLine = localizeText("已取消安装：未选择实例")
                     needsRender = true
                     break
                 }
@@ -1368,7 +1917,7 @@ func runResourceSearchTUI(
             versionIndex = 0
             if filteredVersions(for: current.project_id).isEmpty {
                 view = .detail
-                statusLine = "无兼容版本：请更换实例或资源"
+                statusLine = localizeText("无兼容版本：请更换实例或资源")
             }
             needsRender = true
         case (.install, .escape):
@@ -1405,12 +1954,12 @@ func runResourceSearchTUI(
             let selectedVersion = versions[versionIndex]
             let installInstance = selectedInstance
             clearScreen()
-            info("正在安装 \(current.title) @ \(selectedVersion.version_number) ...")
+            info(L("正在安装 %@ @ %@ ...", current.title, selectedVersion.version_number))
             var customFileName: String? = nil
             if type == "modpack" {
                 raw.disable()
                 print("")
-                print(stylize("输入整合包实例名（可留空使用默认）: ", ANSI.blue), terminator: "")
+                print(stylize(localizeText("输入整合包实例名（可留空使用默认）: "), ANSI.blue), terminator: "")
                 let line = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 _ = raw.enable()
                 if !line.isEmpty { customFileName = line }
@@ -1423,12 +1972,12 @@ func runResourceSearchTUI(
                 customFileName: customFileName,
                 showProgress: true
             )
-            if result.hasPrefix("安装成功") || result.hasPrefix("已导入") {
+            if result.hasPrefix(localizeText("安装成功")) || result.hasPrefix(localizeText("已导入")) {
                 success(result)
             } else {
                 fail(result)
             }
-            print(stylize("按任意键返回详情页...", ANSI.gray))
+            print(stylize(localizeText("按任意键返回详情页..."), ANSI.gray))
             _ = readInputKey(timeoutMs: nil)
             view = .detail
             needsRender = true
@@ -1440,7 +1989,7 @@ func runResourceSearchTUI(
 
 func resourcesSearch(args: [String]) {
     guard let query = args.last(where: { !$0.hasPrefix("-") }) else {
-        fail("用法错误：缺少 <name>")
+        fail(localizeText("用法错误：缺少 <name>"))
         return
     }
 
@@ -1450,11 +1999,11 @@ func resourcesSearch(args: [String]) {
         type = parsedType
     } else {
         if jsonOutputEnabled {
-            fail("JSON 模式必须指定资源类型：--mods / --shaders / --datapacks / --resourcepacks / --modpacks 或 --type <mod|shader|datapack|resourcepack|modpack>")
+            fail(localizeText("JSON 模式必须指定资源类型：--mods / --shaders / --datapacks / --resourcepacks / --modpacks 或 --type <mod|shader|datapack|resourcepack|modpack>"))
             return
         }
         guard isInteractive, let picked = chooseResourceTypeInteractively() else {
-            fail("必须指定资源类型：--mods / --shaders / --datapacks / --resourcepacks / --modpacks 或 --type <mod|shader|datapack|resourcepack|modpack>")
+            fail(localizeText("必须指定资源类型：--mods / --shaders / --datapacks / --resourcepacks / --modpacks 或 --type <mod|shader|datapack|resourcepack|modpack>"))
             return
         }
         type = picked
@@ -1465,12 +2014,12 @@ func resourcesSearch(args: [String]) {
     var (hits, errorText) = fetchResourceHits(query: query, type: type, limit: limit, page: page)
 
     if !errorText.isEmpty {
-        fail("搜索失败: \(errorText)")
+        fail(L("搜索失败: %@", errorText))
         return
     }
 
     if hits.isEmpty {
-        warn("无搜索结果")
+        warn(localizeText("无搜索结果"))
         return
     }
     let sort = (valueOf("--sort", in: args) ?? "downloads").lowercased()
@@ -1482,7 +2031,7 @@ func resourcesSearch(args: [String]) {
     let targetInstance = explicitInstance ?? (cfg.defaultInstance.isEmpty ? (listInstances().first ?? "") : cfg.defaultInstance)
     if isInteractive {
         if type != "modpack" && targetInstance.isEmpty {
-            warn("未检测到实例，交互安装将不可用。可用 --game 指定实例。")
+            warn(localizeText("未检测到实例，交互安装将不可用。可用 --game 指定实例。"))
         }
         runResourceSearchTUI(
             initialHits: hits,
@@ -1501,7 +2050,7 @@ func resourcesSearch(args: [String]) {
 
 func resourcesInstall(args: [String]) {
     guard let id = args.first else {
-        fail("用法错误：缺少 <id>")
+        fail(localizeText("用法错误：缺少 <id>"))
         return
     }
 
@@ -1510,11 +2059,11 @@ func resourcesInstall(args: [String]) {
         type = parsedType
     } else {
         if jsonOutputEnabled {
-            fail("JSON 模式必须指定资源类型：--mods / --shaders / --datapacks / --resourcepacks / --modpacks 或 --type <mod|shader|datapack|resourcepack|modpack>")
+            fail(localizeText("JSON 模式必须指定资源类型：--mods / --shaders / --datapacks / --resourcepacks / --modpacks 或 --type <mod|shader|datapack|resourcepack|modpack>"))
             return
         }
-        guard let picked = chooseResourceTypeInteractively(title: "请选择安装资源类型") else {
-            fail("已取消安装：未选择资源类型")
+        guard let picked = chooseResourceTypeInteractively(title: localizeText("请选择安装资源类型")) else {
+            fail(localizeText("已取消安装：未选择资源类型"))
             return
         }
         type = picked
@@ -1525,17 +2074,17 @@ func resourcesInstall(args: [String]) {
             instance = specified
         } else {
             if jsonOutputEnabled {
-                fail("安装资源必须指定实例：请使用 --game <instance>")
+                fail(localizeText("安装资源必须指定实例：请使用 --game <instance>"))
                 return
             }
-            guard let selected = chooseInstanceInteractively(title: "请选择要安装到的实例") else {
-                fail("已取消安装：未选择实例")
+            guard let selected = chooseInstanceInteractively(title: localizeText("请选择要安装到的实例")) else {
+                fail(localizeText("已取消安装：未选择实例"))
                 return
             }
             instance = selected
         }
         if let instance, !listInstances().contains(instance) {
-            fail("实例不存在: \(instance)")
+            fail(L("实例不存在: %@", instance))
             return
         }
     }
@@ -1545,20 +2094,20 @@ func resourcesInstall(args: [String]) {
         version = specifiedVersion
     } else {
         if jsonOutputEnabled {
-            fail("未指定 --version；JSON 模式不支持交互选择版本")
+            fail(localizeText("未指定 --version；JSON 模式不支持交互选择版本"))
             return
         }
         guard let selectedVersion = chooseResourceVersionInteractively(projectId: id) else {
-            fail("已取消安装：未选择版本")
+            fail(localizeText("已取消安装：未选择版本"))
             return
         }
         version = selectedVersion.id
-        info("已选择版本: \(selectedVersion.version_number)")
+        info(L("已选择版本: %@", selectedVersion.version_number))
     }
 
     var customFileName = valueOf("--name", in: args)
     if type == "modpack", customFileName == nil, !jsonOutputEnabled {
-        print(stylize("输入整合包实例名（可留空使用默认）: ", ANSI.blue), terminator: "")
+        print(stylize(localizeText("输入整合包实例名（可留空使用默认）: "), ANSI.blue), terminator: "")
         let line = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !line.isEmpty { customFileName = line }
     }
@@ -1571,7 +2120,7 @@ func resourcesInstall(args: [String]) {
         customFileName: customFileName,
         showProgress: true
     )
-    if resultText.hasPrefix("安装成功") || resultText.hasPrefix("已导入") {
+    if resultText.hasPrefix(localizeText("安装成功")) || resultText.hasPrefix(localizeText("已导入")) {
         success(resultText)
     } else {
         fail(resultText)
@@ -1580,19 +2129,19 @@ func resourcesInstall(args: [String]) {
 
 func resourcesList(args: [String]) {
     guard let instance = valueOf("--game", in: args) else {
-        fail("用法错误：缺少 --game <instance>")
+        fail(localizeText("用法错误：缺少 --game <instance>"))
         return
     }
 
     let type = resourceTypeFromArgs(args)
     let dir = resourceDir(type: type, instance: instance)
     guard let items = try? fm.contentsOfDirectory(atPath: dir.path) else {
-        warn("目录为空或不存在: \(dir.path)")
+        warn(L("目录为空或不存在: %@", dir.path))
         return
     }
 
     if items.isEmpty {
-        warn("无资源文件")
+        warn(localizeText("无资源文件"))
         return
     }
 
@@ -1612,32 +2161,32 @@ func resourcesList(args: [String]) {
 
 func resourcesRemove(args: [String]) {
     guard let target = args.first else {
-        fail("用法错误：缺少 <id|filename>")
+        fail(localizeText("用法错误：缺少 <id|filename>"))
         return
     }
     guard let instance = valueOf("--game", in: args) else {
-        fail("用法错误：缺少 --game <instance>")
+        fail(localizeText("用法错误：缺少 --game <instance>"))
         return
     }
 
     let type = resourceTypeFromArgs(args)
     let dir = resourceDir(type: type, instance: instance)
     guard let items = try? fm.contentsOfDirectory(atPath: dir.path) else {
-        fail("目录不存在: \(dir.path)")
+        fail(L("目录不存在: %@", dir.path))
         return
     }
 
     guard let hit = items.first(where: { $0 == target || $0.localizedCaseInsensitiveContains(target) }) else {
-        fail("未找到匹配文件: \(target)")
+        fail(L("未找到匹配文件: %@", target))
         return
     }
 
     let path = dir.appendingPathComponent(hit)
     do {
         try fm.removeItem(at: path)
-        success("已删除: \(hit)")
+        success(L("已删除: %@", hit))
     } catch {
-        fail("删除失败: \(error.localizedDescription)")
+        fail(L("删除失败: %@", error.localizedDescription))
     }
 }
 
@@ -1648,7 +2197,7 @@ func handleUninstall(args: [String]) {
     }
     let targetValue = args[0].lowercased()
     guard let target = UninstallTarget(rawValue: targetValue) else {
-        fail("未知卸载目标: \(args[0])")
+        fail(L("未知卸载目标: %@", args[0]))
         printUninstallHelp()
         return
     }
@@ -1674,7 +2223,7 @@ func handleLang(args: [String]) {
         }
     case "set":
         guard args.count >= 2 else {
-            fail("用法: scl lang set <code>")
+            fail(localizeText("用法: scl lang set <code>"))
             return
         }
         let code = args[1]
@@ -1723,17 +2272,17 @@ func uninstall(target: UninstallTarget) {
     }
 
     if removed.isEmpty && missing.isEmpty && failed.isEmpty {
-        warn("未找到可卸载的内容")
+        warn(localizeText("未找到可卸载的内容"))
         return
     }
     if !removed.isEmpty {
-        success("已移除: \(removed.joined(separator: ", "))")
+        success(L("已移除: %@", removed.joined(separator: ", ")))
     }
     if !failed.isEmpty {
-        warn("未移除: \(failed.joined(separator: ", "))")
+        warn(L("未移除: %@", failed.joined(separator: ", ")))
     }
     if !missing.isEmpty {
-        warn("未找到: \(missing.joined(separator: ", "))")
+        warn(L("未找到: %@", missing.joined(separator: ", ")))
     }
 }
 
@@ -1786,7 +2335,7 @@ private func removeFileIfExists(_ url: URL) -> RemoveResult {
             try fm.removeItem(at: url)
             return .removed
         } catch {
-            let message = "删除失败: \(url.path) (\(error.localizedDescription))"
+            let message = L("删除失败: %@ (%@)", url.path, error.localizedDescription)
             warn(message)
             setExitCode(1)
             return .failed(message)

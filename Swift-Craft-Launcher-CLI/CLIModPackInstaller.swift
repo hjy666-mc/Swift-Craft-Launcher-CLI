@@ -149,7 +149,7 @@ func installModrinthModpack(
     fputs("[modpack-debug] installModrinthModpack marker=CLI-64333ec\n", stderr)
     writeDebugLog("[modpack-debug] installModrinthModpack marker=CLI-64333ec")
     let sem = DispatchSemaphore(value: 0)
-    var result = "安装失败"
+    var result = L("安装失败")
     Task {
         defer { sem.signal() }
         do {
@@ -157,7 +157,7 @@ func installModrinthModpack(
             let data = try await fetchModrinthData(from: versionsURL)
             let versions = try JSONDecoder().decode([ModrinthVersion].self, from: data)
             guard let selectedBrief = versions.first(where: { version == nil || $0.id == version || $0.version_number == version }) else {
-                result = "未找到匹配版本"
+                result = L("未找到匹配版本")
                 return
             }
             let selectedResult = await fetchModrinthVersionWithStatus(id: selectedBrief.id)
@@ -176,7 +176,7 @@ func installModrinthModpack(
                 if !acc.contains(where: { $0.url == item.url }) { acc.append(item) }
             }
             guard let _ = orderedFiles.first else {
-                result = "未找到可下载的整合包文件"
+                result = L("未找到可下载的整合包文件")
                 return
             }
 
@@ -244,9 +244,9 @@ func installModrinthModpack(
                 let gvCount = selected.game_versions?.count ?? -1
                 writeDebugLog("[modpack-debug] fallback=nil depsCount=\(depsCount) gvCount=\(gvCount) err=\(selectedResult.error ?? "nil")")
                 result = writeFailureDiagnostics(
-                    reason: "未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）",
+                    reason: L("未找到 modrinth.index.json 或 manifest.json（无法识别整合包格式，未安装）"),
                     tmpDir: workingDir,
-                    extra: "版本文件列表:\n\(versionFileList)\n\n版本详情拉取错误: \(selectedResult.error ?? "nil")\nfallback返回nil: true\ndepsCount=\(depsCount) gameVersionsCount=\(gvCount)\nmarker=CLI-64333ec"
+                    extra: L("版本文件列表:\n%@\n\n版本详情拉取错误: %@\nfallback返回nil: true\ndepsCount=%@ gameVersionsCount=%@\nmarker=CLI-64333ec", versionFileList, selectedResult.error ?? "nil", String(depsCount), String(gvCount))
                 )
                 return
             }
@@ -263,18 +263,18 @@ func installModrinthModpack(
                         return "vanilla"
                     }()
                     guard !gameVersion.isEmpty else {
-                        result = "整合包未包含 minecraft 版本信息"
+                        result = L("整合包未包含 minecraft 版本信息")
                         return
                     }
 
                     let instanceName = (preferredName?.isEmpty == false) ? preferredName! : (index.name ?? "modpack-\(projectId)")
                     if listInstances().contains(instanceName) {
-                        result = "实例已存在: \(instanceName)"
+                        result = L("实例已存在: %@", instanceName)
                         return
                     }
 
                     if let err = localCreateFullInstance(instance: instanceName, gameVersion: gameVersion, modLoader: modLoader) {
-                        result = "创建实例失败: \(err)"
+                        result = L("创建实例失败: %@", err)
                         return
                     }
 
@@ -303,11 +303,11 @@ func installModrinthModpack(
                     let filesOk = await installModPackFiles(indexInfo.files, profileDir: profileDir)
                     let depsOk = await installModPackDependencies(indexInfo.dependencies, gameVersion: gameVersion, modLoader: modLoader, profileDir: profileDir)
                     if !filesOk || !depsOk {
-                        result = "安装完成: 已导入实例 \(instanceName)（资源下载失败）"
+                        result = L("安装完成: 已导入实例 %@（资源下载失败）", instanceName)
                         return
                     }
 
-                    result = "安装成功: 已导入实例 \(instanceName)"
+                    result = L("安装成功: 已导入实例 %@", instanceName)
                     return
                 } else {
                     indexDecodeFailed = true
@@ -322,11 +322,11 @@ func installModrinthModpack(
                 let loaderInfo = parseCurseForgeLoader(manifest.minecraft.modLoaders)
                 let instanceName = (preferredName?.isEmpty == false) ? preferredName! : manifest.name
                 if listInstances().contains(instanceName) {
-                    result = "实例已存在: \(instanceName)"
+                    result = L("实例已存在: %@", instanceName)
                     return
                 }
                 if let err = localCreateFullInstance(instance: instanceName, gameVersion: gameVersion, modLoader: loaderInfo.type) {
-                    result = "创建实例失败: \(err)"
+                    result = L("创建实例失败: %@", err)
                     return
                 }
 
@@ -344,11 +344,11 @@ func installModrinthModpack(
                 }
                 let depsOk = await installModPackDependencies(deps, gameVersion: gameVersion, modLoader: loaderInfo.type, profileDir: profileDir)
                 if !depsOk {
-                    result = "安装完成: 已导入实例 \(instanceName)（资源下载失败）"
+                    result = L("安装完成: 已导入实例 %@（资源下载失败）", instanceName)
                     return
                 }
 
-                result = "安装成功: 已导入实例 \(instanceName)"
+                result = L("安装成功: 已导入实例 %@", instanceName)
                 return
             }
 
@@ -380,12 +380,12 @@ func installModrinthModpack(
             }()
             writeDebugLog("[modpack-debug] index decode failed. \(indexInfo) \(manifestInfo)")
             result = writeFailureDiagnostics(
-                reason: "索引文件解析失败（可能格式不支持，未安装）",
+                reason: L("索引文件解析失败（可能格式不支持，未安装）"),
                 tmpDir: workingDir,
-                extra: "版本文件列表:\n\(versionFileList)\n\(indexInfo)\n\(manifestInfo)"
+                extra: L("版本文件列表:\n%@\n%@\n%@", versionFileList, indexInfo, manifestInfo)
             )
         } catch {
-            result = "安装失败: \(error.localizedDescription)"
+            result = L("安装失败: %@", error.localizedDescription)
         }
     }
     sem.wait()
@@ -503,12 +503,12 @@ private func writeDebugLog(_ line: String) {
 
 private func writeFailureDiagnostics(reason: String, tmpDir: URL, extra: String? = nil) -> String {
     let listing = listFilesForDebug(under: tmpDir, maxItems: 300)
-    let combined = extra == nil ? listing : "\(extra!)\n\n解压文件列表:\n\(listing)"
+    let combined = extra == nil ? listing : L("%@\n\n解压文件列表:\n%@", extra!, listing)
     let diagPath = writeDebugListing(combined)
     if let diagPath {
-        return "\(reason)。解压目录: \(tmpDir.path)\n清单已写入: \(diagPath)"
+        return L("%@。解压目录: %@\n清单已写入: %@", reason, tmpDir.path, diagPath)
     }
-    return "\(reason)。解压目录: \(tmpDir.path)"
+    return L("%@。解压目录: %@", reason, tmpDir.path)
 }
 
 private func installOverridesOnly(
@@ -530,19 +530,19 @@ private func installOverridesOnly(
     }()
     let instanceName = (preferredName?.isEmpty == false) ? preferredName! : "modpack-\(projectId)"
     if listInstances().contains(instanceName) {
-        return "实例已存在: \(instanceName)"
+        return L("实例已存在: %@", instanceName)
     }
     if let err = localCreateFullInstance(instance: instanceName, gameVersion: gameVersion, modLoader: modLoader) {
-        return "创建实例失败: \(err)"
+        return L("创建实例失败: %@", err)
     }
     let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
     copyOverrides(from: overridesDir, to: profileDir)
     let deps = buildDependencies(from: selectedVersion.dependencies)
     let depsOk = await installModPackDependencies(deps, gameVersion: gameVersion, modLoader: modLoader, profileDir: profileDir)
     if !depsOk {
-        return "安装完成: 已导入实例 \(instanceName)（仅包含 overrides，依赖下载失败）"
+        return L("安装完成: 已导入实例 %@（仅包含 overrides，依赖下载失败）", instanceName)
     }
-    return "安装成功: 已导入实例 \(instanceName)（仅包含 overrides）"
+    return L("安装成功: 已导入实例 %@（仅包含 overrides）", instanceName)
 }
 
 private func findOverridesDir(under root: URL) -> URL? {
@@ -681,9 +681,9 @@ private func installFromVersionDependenciesOnly(
         writeDebugLog("[modpack-debug] deps after refresh count=\(deps.count) fetchErr=\(fetchErr ?? "nil")")
     }
     if deps.isEmpty {
-        let reason = "版本依赖为空（无法安装）。依赖数量=0，fetchError=\(fetchErr ?? "nil")"
+        let reason = L("版本依赖为空（无法安装）。依赖数量=0，fetchError=%@", fetchErr ?? "nil")
         _ = writeFailureDiagnostics(reason: reason, tmpDir: tmpDir)
-        return "安装失败: \(reason)"
+        return L("安装失败: %@", reason)
     }
     let gameVersion = sourceVersion.game_versions?.first ?? ""
     let loaders = sourceVersion.loaders ?? []
@@ -695,16 +695,16 @@ private func installFromVersionDependenciesOnly(
         return "vanilla"
     }()
     if gameVersion.isEmpty {
-        let reason = "版本未包含 game_versions（无法安装）。fetchError=\(fetchErr ?? "nil")"
+        let reason = L("版本未包含 game_versions（无法安装）。fetchError=%@", fetchErr ?? "nil")
         _ = writeFailureDiagnostics(reason: reason, tmpDir: tmpDir)
-        return "安装失败: \(reason)"
+        return L("安装失败: %@", reason)
     }
     let instanceName = (preferredName?.isEmpty == false) ? preferredName! : "modpack-\(projectId)"
     if listInstances().contains(instanceName) {
-        return "实例已存在: \(instanceName)"
+        return L("实例已存在: %@", instanceName)
     }
     if let err = localCreateFullInstance(instance: instanceName, gameVersion: gameVersion, modLoader: modLoader) {
-        return "创建实例失败: \(err)"
+        return L("创建实例失败: %@", err)
     }
     let profileDir = profileRoot().appendingPathComponent(instanceName, isDirectory: true)
     if let overridesDir = findOverridesDir(under: tmpDir) {
@@ -712,9 +712,9 @@ private func installFromVersionDependenciesOnly(
     }
     let depsOk = await installModPackDependencies(deps, gameVersion: gameVersion, modLoader: modLoader, profileDir: profileDir)
     if !depsOk {
-        return "安装失败: 依赖下载失败"
+        return L("安装失败: 依赖下载失败")
     }
-    return "安装成功: 已导入实例 \(instanceName)（使用版本依赖列表）"
+    return L("安装成功: 已导入实例 %@（使用版本依赖列表）", instanceName)
 }
 
 private func resolveTargetDir(projectId: String, profileDir: URL) async -> URL {
@@ -770,7 +770,7 @@ private func fetchModrinthData(from url: URL) async throws -> Data {
     if let http = response as? HTTPURLResponse, http.statusCode >= 400 {
         let snippet = String(data: data, encoding: .utf8)?.prefix(200) ?? ""
         throw NSError(domain: "Modrinth", code: http.statusCode, userInfo: [
-            NSLocalizedDescriptionKey: "Modrinth API 请求失败: \(http.statusCode) \(snippet)"
+            NSLocalizedDescriptionKey: L("Modrinth API 请求失败: %@ %@", http.statusCode, String(snippet))
         ])
     }
     return data
@@ -838,7 +838,7 @@ private func fetchCurseForgeFileDetail(projectId: Int, fileId: Int) async throws
     let (data, response) = try await URLSession.shared.data(for: request)
     if let http = response as? HTTPURLResponse, http.statusCode == 403 {
         throw NSError(domain: "CurseForge", code: 403, userInfo: [
-            NSLocalizedDescriptionKey: "CurseForge API 需要 API Key，请设置环境变量 CURSEFORGE_API_KEY"
+            NSLocalizedDescriptionKey: localizeText("CurseForge API 需要 API Key，请设置环境变量 CURSEFORGE_API_KEY")
         ])
     }
     let decoded = try JSONDecoder().decode(CurseForgeFileResponse.self, from: data)

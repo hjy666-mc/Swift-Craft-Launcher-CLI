@@ -35,7 +35,7 @@ struct SCL: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scl",
         abstract: "Swift Craft Launcher CLI",
-        subcommands: [SetCommand.self, GetCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self, LangCommand.self, OpenCommand.self, UninstallCommand.self, ShellCommand.self]
+        subcommands: [SetCommand.self, GetCommand.self, SearchCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self, LangCommand.self, OpenCommand.self, UninstallCommand.self, ShellCommand.self]
     )
     @OptionGroup var global: GlobalOptions
 }
@@ -59,6 +59,26 @@ struct GetCommand: ParsableCommand {
     mutating func run() throws {
         applyGlobal(global)
         handleGet(args: args)
+    }
+}
+
+struct SearchCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "search", abstract: localizeText("全局搜索"))
+    @OptionGroup var global: GlobalOptions
+    @Argument(parsing: .captureForPassthrough) var args: [String] = []
+    @Option(name: .long) var limit: Int?
+    @Option(name: .long) var page: Int?
+
+    mutating func run() throws {
+        applyGlobal(global)
+        var passArgs = args
+        if let limit, limit > 0 {
+            appendOption(&passArgs, flag: "--limit", value: String(limit))
+        }
+        if let page, page > 0 {
+            appendOption(&passArgs, flag: "--page", value: String(page))
+        }
+        handleSearch(args: passArgs)
     }
 }
 
@@ -541,6 +561,8 @@ private func runShellCommand(_ line: String) {
         handleSet(args: args)
     case "get":
         handleGet(args: args)
+    case "search":
+        handleSearch(args: args)
     case "game":
         handleGame(args: args)
     case "account":
@@ -562,9 +584,9 @@ private func runShellCommand(_ line: String) {
     case "clear":
         clearScreen()
     case "shell":
-        warn("当前已在 sclshell 中")
+        warn(localizeText("当前已在 sclshell 中"))
     default:
-        fail("未知命令: \(command)")
+        fail(L("未知命令: %@", command))
     }
 }
 
@@ -576,9 +598,9 @@ struct ShellCommand: ParsableCommand {
         applyGlobal(global)
         clearScreen()
         print(stylize(sclShellBanner, ANSI.bold + ANSI.cyan))
-        print(stylize("输入 help 查看命令，输入 exit/quit 退出。", ANSI.gray))
+        print(stylize(localizeText("输入 help 查看命令，输入 exit/quit 退出。"), ANSI.gray))
         while true {
-            print(stylize("sclshell> ", ANSI.blue), terminator: "")
+            print(stylize(localizeText("sclshell> "), ANSI.blue), terminator: "")
             guard let line = readLine() else {
                 print("")
                 break
