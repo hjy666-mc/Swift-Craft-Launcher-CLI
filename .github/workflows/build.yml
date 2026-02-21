@@ -34,19 +34,27 @@ jobs:
           echo "❌ Binary not found"
           exit 1
         fi
+
+        OUT_DIR=$(dirname "$BIN_PATH")
+        echo "Binary path: $BIN_PATH"
+        echo "Output dir: $OUT_DIR"
+
         mkdir -p dist
         cp "$BIN_PATH" dist/scl
-        if [[ -d "build/Build/Products/Release/en.lproj" ]]; then
-          cp -R "build/Build/Products/Release/en.lproj" dist/
-        fi
-        if [[ -d "build/Build/Products/Release/zh-Hans.lproj" ]]; then
-          cp -R "build/Build/Products/Release/zh-Hans.lproj" dist/
-        fi
+
+        # copy any lproj found next to the binary
+        find "$OUT_DIR" -maxdepth 1 -type d -name "*.lproj" -print0 | while IFS= read -r -d '' d; do
+          cp -R "$d" dist/
+        done
+
         echo "Before strip:"
         ls -lh dist/scl
         strip dist/scl
         echo "After strip:"
         ls -lh dist/scl
+
+        echo "Dist content:"
+        ls -la dist
 
     - name: Upload
       uses: actions/upload-artifact@v4
