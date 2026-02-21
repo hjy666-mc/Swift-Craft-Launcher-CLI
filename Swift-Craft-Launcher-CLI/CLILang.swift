@@ -43,10 +43,27 @@ private func containsCJK(_ text: String) -> Bool {
     }
 }
 
+private let executableURL: URL = {
+    if let url = Bundle.main.executableURL {
+        return url
+    }
+    let arg0 = CommandLine.arguments.first ?? ""
+    if arg0.hasPrefix("/") {
+        return URL(fileURLWithPath: arg0)
+    }
+    let pathEnv = ProcessInfo.processInfo.environment["PATH"] ?? ""
+    for dir in pathEnv.split(separator: ":") {
+        let candidate = URL(fileURLWithPath: String(dir)).appendingPathComponent(arg0)
+        if FileManager.default.isExecutableFile(atPath: candidate.path) {
+            return candidate
+        }
+    }
+    return URL(fileURLWithPath: arg0)
+}()
+
 private func stringsFileURL(for code: String) -> URL {
     let normalized = normalizeLanguageCode(code)
-    let execURL = URL(fileURLWithPath: CommandLine.arguments[0])
-    let base = execURL.deletingLastPathComponent()
+    let base = executableURL.deletingLastPathComponent()
     let direct = base
         .appendingPathComponent("\(normalized).lproj", isDirectory: true)
         .appendingPathComponent("Localizable.strings")
