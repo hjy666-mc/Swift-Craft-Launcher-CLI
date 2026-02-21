@@ -56,8 +56,13 @@ jobs:
         echo "Dist content:"
         ls -la dist
 
+    - name: Pack
+      run: |
+        cd dist
+        zip -r ../scl.zip .
+
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
         name: scl
-        path: dist
+        path: scl.zip
