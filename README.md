@@ -16,7 +16,8 @@
 
 ```
 mkdir -p ~/.local/bin \
-&& curl -L "https://github.com/hjy666-mc/Swift-Craft-Launcher-CLI/releases/latest/download/scl" -o ~/.local/bin/scl \
+&& curl -L "https://github.com/hjy666-mc/Swift-Craft-Launcher-CLI/releases/latest/download/scl.zip" -o /tmp/scl.zip \
+&& unzip -o /tmp/scl.zip -d ~/.local/bin \
 && chmod +x ~/.local/bin/scl \
 && { grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' ~/.zprofile 2>/dev/null || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zprofile; } \
 && { grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' ~/.zshrc 2>/dev/null || echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc; }
