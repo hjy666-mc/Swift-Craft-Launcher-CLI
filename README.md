@@ -46,6 +46,7 @@ mkdir -p ~/.local/bin \
 - open 打开主程序
 - uninstall 卸载组件
 - shell 进入交互式 sclshell
+- lang 切换语言
 
 ## 许可证
 
