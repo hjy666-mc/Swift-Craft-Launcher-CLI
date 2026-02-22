@@ -1,12 +1,19 @@
-# Swift Craft Launcher CLI
+<div align="center">
+ <h1> Swift Craft Launcher CLI </h1>
+  ✨`scl` 是 `Swift Craft Launcher` 的命令行工具，主要用于终端场景下的实例、账号、资源管理。
+  <br>
+<img alt="Static Badge" src="https://img.shields.io/badge/macOS-14+-blue">
+<img alt="Static Badge" src="https://img.shields.io/badge/License-APGL%20v3-blue">
+<br>
 
-`scl` 是 `Swift Craft Launcher` 的命令行工具，主要用于终端场景下的实例、账号、资源管理。
+
+<img width="304" height="406.2" alt="enScreenShot" src="https://github.com/user-attachments/assets/0c19e626-e918-4b8f-8d16-00ad5a69e6e6" />
+<img width="304" height="406.2" alt="zhScreenShot" src="https://github.com/user-attachments/assets/3f412e1e-4628-42e8-ab81-ddd134905f91" />
+</div>
 
 [文档](sclcli.dcstudio.org)
 [主项目](github.com/suhang12332/Swift-Craft-Launcher)
-
-<img width="304" height="406.2" alt="CleanShot 2026-02-22 at 1  08 06" src="https://github.com/user-attachments/assets/0c19e626-e918-4b8f-8d16-00ad5a69e6e6" />
-
+[EnglishREADME](./README_en.md)
 
 ## 环境要求
 
