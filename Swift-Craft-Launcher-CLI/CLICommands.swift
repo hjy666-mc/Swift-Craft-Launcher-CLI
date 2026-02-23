@@ -5,17 +5,18 @@ func handleSet(args: [String]) {
     if args.contains("--help") || args.contains("-h") {
         printSetHelp()
         return
-    }
+    }// help参数，懒得细抠
 
     if args.isEmpty {
         if jsonOutputEnabled {
             fail(localizeText("JSON 模式下请使用: scl set <key> <value> --json"))
             return
-        }
+        }// json模式时没指定参数
         runSettingsTUI()
         return
     }
 
+    // 重置某项配置
     if let resetIndex = args.firstIndex(of: "--reset") {
         let key = args.dropFirst(resetIndex + 1).first
         if let key {
@@ -58,11 +59,12 @@ func handleSet(args: [String]) {
     success(L("已设置 %@=%@", key, value))
 }
 
+// get
 func handleGet(args: [String]) {
     if args.contains("--help") || args.contains("-h") {
         printGetHelp()
         return
-    }
+    } // help参数照抄
     if args.contains("--cli") {
         fail(localizeText("不再支持 --cli（已移除 CLI 内部配置项）"))
         return
@@ -71,12 +73,12 @@ func handleGet(args: [String]) {
     if args.contains("--all") {
         printTable(headers: ["KEY", "VALUE"], rows: appStorageRows())
         return
-    }
+    } // print所有配置项
 
     guard let key = args.first else {
         fail(localizeText("用法错误：缺少 <key>"))
         return
-    }
+    } // 没输入配置项时直接怼回去
 
     let value: String
     if let v = getAppStorageValue(key: key) {
@@ -101,7 +103,7 @@ func handleGame(args: [String]) {
         printGameHelp()
         return
     }
-
+// game下的子指令
     let subArgs = Array(args.dropFirst())
     switch sub {
     case "list": gameList(args: subArgs)
@@ -116,7 +118,7 @@ func handleGame(args: [String]) {
         fail(L("未知 game 子命令: %@", sub))
     }
 }
-
+// 实例列表，没啥花样
 func gameList(args: [String]) {
     let versionFilter = valueOf("--version", in: args)
     let sort = (valueOf("--sort", in: args) ?? "name").lowercased()
@@ -205,6 +207,16 @@ func gameConfig(args: [String]) {
 }
 
 func gameLaunch(args: [String]) {
+    let startStamp = Date().timeIntervalSince1970
+    func trace(_ msg: String) {
+        guard ProcessInfo.processInfo.environment["SCL_TRACE"] != nil else { return }
+        let line = "[launch] \(String(format: "%.3f", Date().timeIntervalSince1970 - startStamp))s \(msg)\n"
+        if let data = line.data(using: .utf8) {
+            FileHandle.standardError.write(data)
+        }
+    }
+
+    trace("start")
     let instance: String
     if let provided = positionalArgs(args).first {
         instance = provided
@@ -223,12 +235,13 @@ func gameLaunch(args: [String]) {
         fail(L("未找到实例启动记录: %@", instance))
         return
     }
+    trace("record loaded")
     var command = record["launchCommand"] as? [String] ?? []
     if command.isEmpty {
-        // 尝试本地修复（仅当已有记录包含版本/加载器）
         let gv = (record["gameVersion"] as? String) ?? ""
         let ml = (record["modLoader"] as? String) ?? ""
         if !gv.isEmpty && !ml.isEmpty {
+            // 这里不修就启动不了
             if let err = localCreateFullInstance(instance: instance, gameVersion: gv, modLoader: ml) {
                 fail(L("实例启动命令为空，且修复失败：%@", err))
                 return
@@ -244,7 +257,6 @@ func gameLaunch(args: [String]) {
         }
     }
 
-    // 修正占位符（classpath、目录等），避免未替换导致启动失败
     let profileDir = profileRoot().appendingPathComponent(instance, isDirectory: true)
     let metaDir = URL(fileURLWithPath: loadConfig().gameDir, isDirectory: true)
         .appendingPathComponent("meta", isDirectory: true)
@@ -252,7 +264,6 @@ func gameLaunch(args: [String]) {
     let nativesDir = metaDir.appendingPathComponent("natives/\(instance)", isDirectory: true)
     try? fm.createDirectory(at: nativesDir, withIntermediateDirectories: true)
 
-    // 如果有多个 -cp，以最后一个为准；若最后一个是占位符则用第一个真实 cp 覆盖
     var cpValues: [String] = []
     for idx in command.indices where command[idx] == "-cp" {
         let valIdx = command.index(after: idx)
@@ -295,8 +306,8 @@ func gameLaunch(args: [String]) {
         }
         return result
     }
+    trace("replacements done")
 
-    // 移除空 quickPlay 选项，避免“Only one quick play option can be specified”报错
     func removeEmptyQuickPlay(_ cmd: [String]) -> [String] {
         var filtered: [String] = []
         var i = 0
@@ -336,16 +347,24 @@ func gameLaunch(args: [String]) {
     var authXuid = "0"
     if let profile = profileForAccountName(authName),
        let credential = loadAuthCredential(userId: profile.id) {
-        switch refreshCredentialSync(credential) {
-        case .success(let refreshed):
-            if refreshed != credential {
-                upsertAuthCredential(refreshed)
+        authUUID = profile.id
+        if !credential.accessToken.isEmpty {
+            authToken = credential.accessToken
+        }
+        if !credential.xuid.isEmpty {
+            authXuid = credential.xuid
+        }
+        if ProcessInfo.processInfo.environment["SCL_REFRESH_TOKEN"] != nil {
+            switch refreshCredentialSync(credential) {
+            case .success(let refreshed):
+                if refreshed != credential {
+                    upsertAuthCredential(refreshed)
+                }
+                authToken = refreshed.accessToken
+                authXuid = refreshed.xuid
+            case .failure(let error):
+                warn(L("正版账号 Token 刷新失败，使用离线模式启动: %@", error.localizedDescription))
             }
-            authUUID = profile.id
-            authToken = refreshed.accessToken
-            authXuid = refreshed.xuid
-        case .failure(let error):
-            warn(L("正版账号 Token 刷新失败，使用离线模式启动: %@", error.localizedDescription))
         }
     }
     let memoryMB = parseMemoryToMB(valueOf("--memory", in: args) ?? config.memory)
@@ -365,6 +384,7 @@ func gameLaunch(args: [String]) {
             command.insert(contentsOf: advanced, at: 0)
         }
     }
+    trace("auth and args ready")
 
     let cwd = profileRoot().appendingPathComponent(instance, isDirectory: true)
     guard fm.fileExists(atPath: cwd.path) else {
@@ -390,9 +410,12 @@ func gameLaunch(args: [String]) {
         }
         process.environment = env
     }
+    trace("process configured")
 
     do {
+        trace("process run")
         try process.run()
+        trace("process started")
         var state = loadProcessState()
         state.pidByInstance[instance] = process.processIdentifier
         saveProcessState(state)
@@ -404,7 +427,7 @@ func gameLaunch(args: [String]) {
                 "java": java,
             ])
         } else {
-            success(L("已启动实例: %@ (pid=%@)", instance, process.processIdentifier))
+            success(L("已启动实例: %@ (pid=%d)", instance, Int(process.processIdentifier)))
         }
     } catch {
         fail(L("启动失败: %@", error.localizedDescription))
@@ -609,7 +632,6 @@ func gameCreate(args: [String]) {
     let showProgress = !jsonOutputEnabled && isatty(STDOUT_FILENO) == 1
     let renderer = InstallProgressRenderer(enabled: showProgress)
 
-    // 本地直装：vanilla/fabric/quilt/forge/neoforge
     if ["vanilla", "fabric", "quilt", "forge", "neoforge"].contains(modLoader) {
         renderer.start(title: localizeText("本地创建实例"))
         if let localErr = localCreateFullInstance(instance: name, gameVersion: gameVersion, modLoader: modLoader) {
