@@ -124,14 +124,12 @@ Adapter（平台层）
 <h2>7. 实例目录布局建议</h2>
 
 <pre>
-instances/
-  MyPack/
-    .minecraft/
-      mods/
-      config/
-      resourcepacks/
-      shaderpacks/
-    instance.json
+versions/
+  Pack/
+    mods/
+    config/
+    resourcepacks/
+    shaderpacks/
     logs/
     saves/
 </pre>
