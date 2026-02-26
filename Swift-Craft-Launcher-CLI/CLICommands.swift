@@ -1294,6 +1294,7 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
     var remoteHasMore = hasMoreRemote
     var detailCache: [String: ModrinthProjectDetail] = [:]
     var versionsCache: [String: [ModrinthVersion]] = [:]
+    var renderer = TUIFrameRenderer()
     let cfg = loadConfig()
     var selectedInstance = cfg.defaultInstance.isEmpty ? (listInstances().first ?? "") : cfg.defaultInstance
     var raw = TerminalRawMode()
@@ -1314,13 +1315,13 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
     func renderList() {
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: items.count, selectedIndex: selectedIndex, pageSize: pageSize)
-        clearScreen()
         let pageItems = Array(items[pageInfo.start..<pageInfo.end])
-        print(stylize(localizeText("全局搜索"), ANSI.bold + ANSI.cyan))
-        print(stylize(L("%@=%@", localizeText("关键词"), query), ANSI.gray))
-        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-        print(stylize(L("search_remote_page", remotePage, remoteHasMore ? "+" : ""), ANSI.gray))
-        print("")
+        var lines: [String] = []
+        lines.append(stylize(localizeText("全局搜索"), ANSI.bold + ANSI.cyan))
+        lines.append(stylize(L("%@=%@", localizeText("关键词"), query), ANSI.gray))
+        lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+        lines.append(stylize(L("search_remote_page", remotePage, remoteHasMore ? "+" : ""), ANSI.gray))
+        lines.append("")
         let rows: [[String]] = pageItems.enumerated().map { idx, item in
             let typeText: String
             if let hit = item.modrinth {
@@ -1337,12 +1338,18 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
                 trimColumn(item.detail, max: 18)
             ]
         }
-        printSelectableTable(headers: ["#", localizeText("类型"), localizeText("名称"), localizeText("实例"), localizeText("详情")], rows: rows, selectedIndex: selectedIndex - pageInfo.start)
-        print("")
-        print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · q/Esc 退出"), ANSI.yellow))
+        lines.append(contentsOf: selectableTableLines(
+            headers: ["#", localizeText("类型"), localizeText("名称"), localizeText("实例"), localizeText("详情")],
+            rows: rows,
+            selectedIndex: selectedIndex - pageInfo.start
+        ))
+        lines.append("")
+        lines.append(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · q/Esc 退出"), ANSI.yellow))
+        renderer.render(lines)
     }
 
     func renderDetail(for item: GlobalItem) {
+        renderer.reset()
         clearScreen()
         if let hit = item.modrinth {
             let detail = detailCache[hit.project_id]
@@ -1394,6 +1401,7 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
     func renderInstall(for hit: ModrinthHit, versions: [ModrinthVersion]) {
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: versions.count, selectedIndex: versionIndex, pageSize: pageSize)
+        renderer.reset()
         clearScreen()
         print(stylize(localizeText("安装对话框"), ANSI.bold + ANSI.cyan))
         print(stylize(localizeText("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出"), ANSI.yellow))
@@ -1484,11 +1492,11 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
                 clearScreen()
                 return
             }
-        case (.list, .down):
-            selectedIndex = min(items.count - 1, selectedIndex + 1)
-            needsRender = true
-        case (.list, .up):
-            selectedIndex = max(0, selectedIndex - 1)
+            case (.list, .down):
+                selectedIndex = min(items.count - 1, selectedIndex + 1)
+                needsRender = true
+            case (.list, .up):
+                selectedIndex = max(0, selectedIndex - 1)
             needsRender = true
         case (.list, .right):
             let pageSize = interactivePageSize()
@@ -1647,6 +1655,7 @@ func runResourceSearchTUI(
     var detailCache: [String: ModrinthProjectDetail] = [:]
     var versionsCache: [String: [ModrinthVersion]] = [:]
     var statusLine = localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · t 切类型 · / 改关键词 · q 退出")
+    var renderer = TUIFrameRenderer()
 
     func filteredVersions(for projectId: String) -> [ModrinthVersion] {
         let rawVersions = versionsCache[projectId] ?? []
@@ -1657,15 +1666,15 @@ func runResourceSearchTUI(
     func renderList() {
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: hits.count, selectedIndex: selectedIndex, pageSize: pageSize)
-        clearScreen()
-        print(stylize(localizeText("资源搜索结果（交互模式）"), ANSI.bold + ANSI.cyan))
+        var lines: [String] = []
+        lines.append(stylize(localizeText("资源搜索结果（交互模式）"), ANSI.bold + ANSI.cyan))
         let targetText = type == "modpack"
             ? localizeText("本地安装整合包")
             : L("%@=%@", localizeText("目标实例"), selectedInstance.isEmpty ? localizeText("<未选择>") : selectedInstance)
-        print(stylize(L("%@=%@ %@=%@ %@", localizeText("关键词"), query, localizeText("类型"), type, targetText), ANSI.gray))
-        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-        print(stylize(L("search_remote_page", remotePage, remoteHasMore ? "+" : ""), ANSI.gray))
-        print("")
+        lines.append(stylize(L("%@=%@ %@=%@ %@", localizeText("关键词"), query, localizeText("类型"), type, targetText), ANSI.gray))
+        lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+        lines.append(stylize(L("search_remote_page", remotePage, remoteHasMore ? "+" : ""), ANSI.gray))
+        lines.append("")
         let pageItems = Array(hits[pageInfo.start..<pageInfo.end])
         let rows = pageItems.enumerated().map { idx, item in
             [
@@ -1677,16 +1686,18 @@ func runResourceSearchTUI(
                 String(item.downloads)
             ]
         }
-        printSelectableTable(
+        lines.append(contentsOf: selectableTableLines(
             headers: ["#", "ID", "TITLE", "AUTHOR", "FOLLOWS", "DOWNLOADS"],
             rows: rows,
             selectedIndex: selectedIndex - pageInfo.start
-        )
-        print("")
-        print(stylize(statusLine, ANSI.yellow))
+        ))
+        lines.append("")
+        lines.append(stylize(statusLine, ANSI.yellow))
+        renderer.render(lines)
     }
 
     func renderDetail(for hit: ModrinthHit) {
+        renderer.reset()
         clearScreen()
         let detail = detailCache[hit.project_id]
         print(stylize(localizeText("资源详情"), ANSI.bold + ANSI.cyan))
@@ -1715,6 +1726,7 @@ func runResourceSearchTUI(
     func renderInstall(for hit: ModrinthHit, versions: [ModrinthVersion]) {
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: versions.count, selectedIndex: versionIndex, pageSize: pageSize)
+        renderer.reset()
         clearScreen()
         print(stylize(localizeText("安装对话框"), ANSI.bold + ANSI.cyan))
         print(stylize(localizeText("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出"), ANSI.yellow))
@@ -1763,8 +1775,7 @@ func runResourceSearchTUI(
 
     while true {
         if hits.isEmpty {
-            clearScreen()
-            print(stylize(localizeText("无搜索结果，按 / 修改关键词，按 t 切换类型，q 退出"), ANSI.yellow))
+            renderer.render([stylize(localizeText("无搜索结果，按 / 修改关键词，按 t 切换类型，q 退出"), ANSI.yellow)])
             let key = readInputKey(timeoutMs: 160)
             if key == .quit { clearScreen(); return }
             if key == .changeType {

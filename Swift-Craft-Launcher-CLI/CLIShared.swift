@@ -654,6 +654,85 @@ func clearScreen() {
     print("\u{001B}[2J\u{001B}[H", terminator: "")
 }
 
+struct TUIFrameRenderer {
+    private var lastLines: [String] = []
+
+    mutating func reset() {
+        lastLines.removeAll()
+    }
+
+    mutating func render(_ lines: [String]) {
+        let maxLines = max(lastLines.count, lines.count)
+        for i in 0..<maxLines {
+            let newLine = i < lines.count ? lines[i] : ""
+            let oldLine = i < lastLines.count ? lastLines[i] : ""
+            if newLine == oldLine { continue }
+            print(String(format: "\u{001B}[%d;1H", i + 1), terminator: "")
+            print("\u{001B}[2K", terminator: "")
+            print(newLine, terminator: "")
+        }
+        print(String(format: "\u{001B}[%d;1H", maxLines + 1), terminator: "")
+        print("\u{001B}[J", terminator: "")
+        fflush(stdout)
+        lastLines = lines
+    }
+}
+
+func selectableTableLines(headers: [String], rows: [[String]], selectedIndex: Int?) -> [String] {
+    guard !headers.isEmpty else { return [] }
+    let termWidth = terminalColumns()
+    if shouldUseCardLayout(headers: headers, terminalWidth: termWidth) {
+        var lines: [String] = []
+        for (rowIdx, row) in rows.enumerated() {
+            let title = row.first.flatMap { $0.isEmpty ? nil : $0 } ?? String(rowIdx + 1)
+            let prefix = rowIdx == selectedIndex ? "➤ " : "  "
+            let heading = "\(prefix)#\(title)"
+            if rowIdx == selectedIndex {
+                lines.append(stylize(heading, ANSI.reverse + ANSI.bold))
+            } else {
+                lines.append(stylize(heading, ANSI.bold + ANSI.blue))
+            }
+
+            for (colIdx, value) in row.enumerated() where colIdx < headers.count {
+                if colIdx == 0 { continue }
+                let key = headers[colIdx]
+                let wrapped = trimColumn(value, max: 56)
+                lines.append("    \(stylize(key, ANSI.gray)): \(wrapped)")
+            }
+            lines.append(stylize(String(repeating: "-", count: 28), ANSI.gray))
+        }
+        return lines
+    }
+
+    let markerWidth = 1
+    let widths = fittedColumnWidths(headers: headers, rows: rows, terminalWidth: termWidth, leadingColumnsWidth: markerWidth + 2)
+
+    func pad(_ text: String, _ width: Int) -> String {
+        let clipped = trimColumn(text, max: width)
+        if clipped.count >= width { return clipped }
+        return clipped + String(repeating: " ", count: width - clipped.count)
+    }
+
+    let markerHeader = " "
+    let headerLine = (pad(markerHeader, markerWidth) + "  " + zip(headers, widths).map { pad($0.0, $0.1) }.joined(separator: "  "))
+    let separator = String(repeating: "-", count: markerWidth) + "  " + widths.map { String(repeating: "-", count: $0) }.joined(separator: "  ")
+
+    var lines: [String] = []
+    lines.append(stylize(headerLine, ANSI.bold + ANSI.blue))
+    lines.append(stylize(separator, ANSI.gray))
+
+    for (idx, row) in rows.enumerated() {
+        let marker = idx == selectedIndex ? "➤" : " "
+        let line = pad(marker, markerWidth) + "  " + zip(row, widths).map { pad($0.0, $0.1) }.joined(separator: "  ")
+        if idx == selectedIndex {
+            lines.append(stylize(line, ANSI.reverse + ANSI.bold))
+        } else {
+            lines.append(line)
+        }
+    }
+    return lines
+}
+
 func pagedBounds(total: Int, selectedIndex: Int, pageSize: Int = 12) -> (start: Int, end: Int, page: Int, maxPage: Int) {
     guard total > 0 else { return (0, 0, 0, 0) }
     let size = max(1, pageSize)
