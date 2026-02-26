@@ -11,6 +11,7 @@
 [Docs](sclcli.dcstudio.org)
 [Main Project](github.com/suhang12332/Swift-Craft-Launcher)
 [简体中文README](./README.md)
+[Contributing](./CONTRIBUTING.md)
 
 ## Requirements
 

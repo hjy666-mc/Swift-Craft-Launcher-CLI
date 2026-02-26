@@ -14,6 +14,7 @@
 [文档](sclcli.dcstudio.org)
 [主项目](github.com/suhang12332/Swift-Craft-Launcher)
 [EnglishREADME](./README_en.md)
+[贡献指南](./CONTRIBUTING.md)
 
 ## 环境要求
 
