@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation / 文档
+    url: https://sclcli.dcstudio.org
+    about: Read the documentation before opening an issue.
+  - name: Main Project / 主项目
+    url: https://github.com/suhang12332/Swift-Craft-Launcher
+    about: GUI launcher repository and related issues.
