@@ -11,6 +11,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Build Release
       run: |
@@ -56,8 +58,43 @@ jobs:
         echo "Dist content:"
         ls -la dist
 
+    - name: Pack
+      run: |
+        cd dist
+        zip -r ../scl.zip .
+
+    - name: Create tag
+      id: tag
+      run: |
+        VERSION_RAW=$(awk '/MARKETING_VERSION/ {print $3; exit}' Swift-Craft-Launcher-CLI.xcodeproj/project.pbxproj | tr -d '";')
+        if [[ -z "$VERSION_RAW" ]]; then
+          echo "❌ MARKETING_VERSION not found"
+          exit 1
+        fi
+        BASE_TAG="v$VERSION_RAW"
+        TAG="$BASE_TAG"
+        if git rev-parse "$TAG" >/dev/null 2>&1; then
+          TAG="${BASE_TAG}-${GITHUB_RUN_NUMBER}"
+        fi
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git tag "$TAG"
+        git push origin "$TAG"
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
         name: scl
-        path: dist
+        path: scl.zip
+
+    - name: Draft Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: ${{ steps.tag.outputs.tag }}
+        draft: true
+        files: |
+          scl.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
