@@ -1214,7 +1214,7 @@ func buildGlobalItems(query: String, limit: Int, page: Int) -> ([GlobalItem], Bo
 }
 
 func handleSearch(args: [String]) {
-    if args.isEmpty || args.contains("--help") || args.contains("-h") {
+    if args.isEmpty {
         printSearchHelp()
         return
     }

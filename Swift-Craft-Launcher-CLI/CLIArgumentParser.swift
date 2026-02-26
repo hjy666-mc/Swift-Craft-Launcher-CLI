@@ -43,7 +43,7 @@ struct SCL: ParsableCommand {
 struct SetCommand: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "set", abstract: localizeText("设置配置项"))
     @OptionGroup var global: GlobalOptions
-    @Argument(parsing: .captureForPassthrough) var args: [String] = []
+    @Argument var keyword: [String] = []
 
     mutating func run() throws {
         applyGlobal(global)
@@ -54,7 +54,7 @@ struct SetCommand: ParsableCommand {
 struct GetCommand: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "get", abstract: localizeText("读取配置项"))
     @OptionGroup var global: GlobalOptions
-    @Argument(parsing: .captureForPassthrough) var args: [String] = []
+    @Argument var keyword: [String] = []
 
     mutating func run() throws {
         applyGlobal(global)
@@ -65,13 +65,13 @@ struct GetCommand: ParsableCommand {
 struct SearchCommand: ParsableCommand {
     static let configuration = CommandConfiguration(commandName: "search", abstract: localizeText("全局搜索"))
     @OptionGroup var global: GlobalOptions
-    @Argument(parsing: .captureForPassthrough) var args: [String] = []
+    @Argument var keyword: [String] = []
     @Option(name: .long) var limit: Int?
     @Option(name: .long) var page: Int?
 
     mutating func run() throws {
         applyGlobal(global)
-        var passArgs = args
+        var passArgs = keyword
         if let limit, limit > 0 {
             appendOption(&passArgs, flag: "--limit", value: String(limit))
         }
