@@ -1,6 +1,6 @@
 <div align="center">
  <h1> Swift Craft Launcher CLI </h1>
-  ✨`scl` 是 `Swift Craft Launcher` 的命令行工具，主要用于终端场景下的实例、账号、资源管理。
+  ✨Swift-Craft-Launcher-CLI 是 Swift Craft Launcher 的命令行工具，主要用于终端场景下的实例、账号、资源管理。
   <br>
 <img alt="Static Badge" src="https://img.shields.io/badge/macOS-14+-blue">
 <img alt="Static Badge" src="https://img.shields.io/badge/License-APGL%20v3-blue">
