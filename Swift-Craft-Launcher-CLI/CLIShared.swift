@@ -733,6 +733,75 @@ func selectableTableLines(headers: [String], rows: [[String]], selectedIndex: In
     return lines
 }
 
+func selectableTableWithDisabledLines(
+    headers: [String],
+    rows: [[String]],
+    selectedIndex: Int?,
+    disabledIndices: Set<Int>
+) -> [String] {
+    guard !headers.isEmpty else { return [] }
+    let termWidth = terminalColumns()
+    if shouldUseCardLayout(headers: headers, terminalWidth: termWidth) {
+        var lines: [String] = []
+        for (rowIdx, row) in rows.enumerated() {
+            let title = row.first.flatMap { $0.isEmpty ? nil : $0 } ?? String(rowIdx + 1)
+            let prefix = rowIdx == selectedIndex ? "➤ " : "  "
+            let heading = "\(prefix)#\(title)"
+            if rowIdx == selectedIndex {
+                lines.append(stylize(heading, ANSI.reverse + ANSI.bold))
+            } else if disabledIndices.contains(rowIdx) {
+                lines.append(stylize(heading, ANSI.gray))
+            } else {
+                lines.append(stylize(heading, ANSI.bold + ANSI.blue))
+            }
+
+            for (colIdx, value) in row.enumerated() where colIdx < headers.count {
+                if colIdx == 0 { continue }
+                let key = headers[colIdx]
+                let wrapped = trimColumn(value, max: 56)
+                let line = "    \(stylize(key, ANSI.gray)): \(wrapped)"
+                if disabledIndices.contains(rowIdx) && rowIdx != selectedIndex {
+                    lines.append(stylize(line, ANSI.gray))
+                } else {
+                    lines.append(line)
+                }
+            }
+            lines.append(stylize(String(repeating: "-", count: 28), ANSI.gray))
+        }
+        return lines
+    }
+
+    let markerWidth = 1
+    let widths = fittedColumnWidths(headers: headers, rows: rows, terminalWidth: termWidth, leadingColumnsWidth: markerWidth + 2)
+
+    func pad(_ text: String, _ width: Int) -> String {
+        let clipped = trimColumn(text, max: width)
+        if clipped.count >= width { return clipped }
+        return clipped + String(repeating: " ", count: width - clipped.count)
+    }
+
+    let markerHeader = " "
+    let headerLine = (pad(markerHeader, markerWidth) + "  " + zip(headers, widths).map { pad($0.0, $0.1) }.joined(separator: "  "))
+    let separator = String(repeating: "-", count: markerWidth) + "  " + widths.map { String(repeating: "-", count: $0) }.joined(separator: "  ")
+
+    var lines: [String] = []
+    lines.append(stylize(headerLine, ANSI.bold + ANSI.blue))
+    lines.append(stylize(separator, ANSI.gray))
+
+    for (idx, row) in rows.enumerated() {
+        let marker = idx == selectedIndex ? "➤" : " "
+        let line = pad(marker, markerWidth) + "  " + zip(row, widths).map { pad($0.0, $0.1) }.joined(separator: "  ")
+        if idx == selectedIndex {
+            lines.append(stylize(line, ANSI.reverse + ANSI.bold))
+        } else if disabledIndices.contains(idx) {
+            lines.append(stylize(line, ANSI.gray))
+        } else {
+            lines.append(line)
+        }
+    }
+    return lines
+}
+
 func pagedBounds(total: Int, selectedIndex: Int, pageSize: Int = 12) -> (start: Int, end: Int, page: Int, maxPage: Int) {
     guard total > 0 else { return (0, 0, 0, 0) }
     let size = max(1, pageSize)
@@ -749,6 +818,7 @@ func chooseOptionInteractively(title: String, header: String = "OPTION", options
     var selected = 0
     var lastWidth = -1
     var needsRender = true
+    var renderer = TUIFrameRenderer()
     var raw = TerminalRawMode()
     guard raw.enable() else { return options.first }
     defer { raw.disable() }
@@ -762,14 +832,15 @@ func chooseOptionInteractively(title: String, header: String = "OPTION", options
         if needsRender {
             let pageSize = interactivePageSize()
             let pageInfo = pagedBounds(total: options.count, selectedIndex: selected, pageSize: pageSize)
-            clearScreen()
-            print(stylize(title, ANSI.bold + ANSI.cyan))
-            print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
-            print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-            print("")
+            var lines: [String] = []
+            lines.append(stylize(title, ANSI.bold + ANSI.cyan))
+            lines.append(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+            lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+            lines.append("")
             let pageItems = Array(options[pageInfo.start..<pageInfo.end])
             let rows = pageItems.enumerated().map { [String(pageInfo.start + $0.offset + 1), $0.element] }
-            printSelectableTable(headers: ["#", header], rows: rows, selectedIndex: selected - pageInfo.start)
+            lines.append(contentsOf: selectableTableLines(headers: ["#", header], rows: rows, selectedIndex: selected - pageInfo.start))
+            renderer.render(lines)
             needsRender = false
         }
 
@@ -795,9 +866,11 @@ func chooseOptionInteractively(title: String, header: String = "OPTION", options
                 needsRender = true
             }
         case .enter:
+            renderer.reset()
             clearScreen()
             return options[selected]
         case .quit, .escape:
+            renderer.reset()
             clearScreen()
             return nil
         default:
@@ -813,6 +886,7 @@ func chooseInstanceInteractively(title: String = localizeText("选择目标实�
     var selected = 0
     var lastWidth = -1
     var needsRender = true
+    var renderer = TUIFrameRenderer()
     var raw = TerminalRawMode()
     guard raw.enable() else { return instances.first }
     defer { raw.disable() }
@@ -826,14 +900,15 @@ func chooseInstanceInteractively(title: String = localizeText("选择目标实�
         if needsRender {
             let pageSize = interactivePageSize()
             let pageInfo = pagedBounds(total: instances.count, selectedIndex: selected, pageSize: pageSize)
-            clearScreen()
-            print(stylize(title, ANSI.bold + ANSI.cyan))
-            print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
-            print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-            print("")
+            var lines: [String] = []
+            lines.append(stylize(title, ANSI.bold + ANSI.cyan))
+            lines.append(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+            lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+            lines.append("")
             let pageItems = Array(instances[pageInfo.start..<pageInfo.end])
             let rows = pageItems.enumerated().map { [String(pageInfo.start + $0.offset + 1), $0.element] }
-            printSelectableTable(headers: ["#", "INSTANCE"], rows: rows, selectedIndex: selected - pageInfo.start)
+            lines.append(contentsOf: selectableTableLines(headers: ["#", "INSTANCE"], rows: rows, selectedIndex: selected - pageInfo.start))
+            renderer.render(lines)
             needsRender = false
         }
 
@@ -859,9 +934,11 @@ func chooseInstanceInteractively(title: String = localizeText("选择目标实�
                 needsRender = true
             }
         case .enter:
+            renderer.reset()
             clearScreen()
             return instances[selected]
         case .quit, .escape:
+            renderer.reset()
             clearScreen()
             return nil
         default:
@@ -877,6 +954,7 @@ func chooseResourceVersionInteractively(projectId: String) -> ModrinthVersion? {
     var selected = 0
     var lastWidth = -1
     var needsRender = true
+    var renderer = TUIFrameRenderer()
     var raw = TerminalRawMode()
     guard raw.enable() else { return versions.first }
     defer { raw.disable() }
@@ -890,11 +968,11 @@ func chooseResourceVersionInteractively(projectId: String) -> ModrinthVersion? {
         if needsRender {
             let pageSize = interactivePageSize()
             let pageInfo = pagedBounds(total: versions.count, selectedIndex: selected, pageSize: pageSize)
-            clearScreen()
-            print(stylize(localizeText("请选择要安装的版本"), ANSI.bold + ANSI.cyan))
-            print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
-            print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-            print("")
+            var lines: [String] = []
+            lines.append(stylize(localizeText("请选择要安装的版本"), ANSI.bold + ANSI.cyan))
+            lines.append(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+            lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+            lines.append("")
             let pageItems = Array(versions[pageInfo.start..<pageInfo.end])
             let rows = pageItems.enumerated().map { idx, ver in
                 [
@@ -906,11 +984,12 @@ func chooseResourceVersionInteractively(projectId: String) -> ModrinthVersion? {
                     trimColumn(ver.date_published ?? "-", max: 19)
                 ]
             }
-            printSelectableTable(
+            lines.append(contentsOf: selectableTableLines(
                 headers: ["#", "VERSION", "TYPE", "LOADERS", "MC", "PUBLISHED"],
                 rows: rows,
                 selectedIndex: selected - pageInfo.start
-            )
+            ))
+            renderer.render(lines)
             needsRender = false
         }
 
@@ -936,9 +1015,11 @@ func chooseResourceVersionInteractively(projectId: String) -> ModrinthVersion? {
                 needsRender = true
             }
         case .enter:
+            renderer.reset()
             clearScreen()
             return versions[selected]
         case .quit, .escape:
+            renderer.reset()
             clearScreen()
             return nil
         default:
@@ -950,6 +1031,7 @@ func chooseResourceVersionInteractively(projectId: String) -> ModrinthVersion? {
 func runSettingsTUI() {
     let allKeys = appStorageSpecs.map(\.key)
     var selected = 0
+    var renderer = TUIFrameRenderer()
     var raw = TerminalRawMode()
     guard raw.enable() else {
         printTable(headers: ["KEY", "VALUE"], rows: appStorageRows())
@@ -960,11 +1042,11 @@ func runSettingsTUI() {
     while true {
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: allKeys.count, selectedIndex: selected, pageSize: pageSize)
-        clearScreen()
-        print(stylize(localizeText("设置中心"), ANSI.bold + ANSI.cyan))
-        print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 修改 · r 重置当前项 · R 重置全部 · q 退出"), ANSI.yellow))
-        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-        print("")
+        var lines: [String] = []
+        lines.append(stylize(localizeText("设置中心"), ANSI.bold + ANSI.cyan))
+        lines.append(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 修改 · r 重置当前项 · R 重置全部 · q 退出"), ANSI.yellow))
+        lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+        lines.append("")
 
         let pageKeys = Array(allKeys[pageInfo.start..<pageInfo.end])
         let rows = pageKeys.enumerated().map { offset, key -> [String] in
@@ -973,7 +1055,12 @@ func runSettingsTUI() {
             let defaultText = "<app-default>"
             return [String(pageInfo.start + offset + 1), key, display, defaultText]
         }
-        printSelectableTable(headers: ["#", "KEY", "VALUE", "DEFAULT"], rows: rows, selectedIndex: selected - pageInfo.start)
+        lines.append(contentsOf: selectableTableLines(
+            headers: ["#", "KEY", "VALUE", "DEFAULT"],
+            rows: rows,
+            selectedIndex: selected - pageInfo.start
+        ))
+        renderer.render(lines)
 
         let key = readInputKey(timeoutMs: 120)
         switch key {
@@ -989,6 +1076,8 @@ func runSettingsTUI() {
             let target = allKeys[selected]
             let currentValue = getAppStorageValue(key: target) ?? "-"
             raw.disable()
+            renderer.reset()
+            clearScreen()
             print("")
             print(stylize(L("设置 %@（当前: %@）", target, currentValue), ANSI.blue))
             print(stylize(localizeText("输入新值并回车（空输入取消）: "), ANSI.blue), terminator: "")
@@ -1017,9 +1106,11 @@ func runSettingsTUI() {
         case .other:
             continue
         case .quit:
+            renderer.reset()
             clearScreen()
             return
         case .escape:
+            renderer.reset()
             clearScreen()
             return
         default:
@@ -1561,6 +1652,7 @@ func chooseCompatibleInstanceInteractively(
     var selected = meta.firstIndex(where: { $0.matches > 0 }) ?? 0
     var lastWidth = -1
     var needsRender = true
+    var renderer = TUIFrameRenderer()
     var raw = TerminalRawMode()
     guard raw.enable() else { return meta[selected].name }
     defer { raw.disable() }
@@ -1574,11 +1666,11 @@ func chooseCompatibleInstanceInteractively(
         if needsRender {
             let pageSize = interactivePageSize()
             let pageInfo = pagedBounds(total: meta.count, selectedIndex: selected, pageSize: pageSize)
-            clearScreen()
-            print(stylize(title, ANSI.bold + ANSI.cyan))
-            print(stylize(localizeText("灰色实例不可安装 · ↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
-            print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-            print("")
+            var lines: [String] = []
+            lines.append(stylize(title, ANSI.bold + ANSI.cyan))
+            lines.append(stylize(localizeText("灰色实例不可安装 · ↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+            lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+            lines.append("")
             let pageItems = Array(meta[pageInfo.start..<pageInfo.end])
             let rows = pageItems.enumerated().map { idx, item in
                 [
@@ -1592,12 +1684,13 @@ func chooseCompatibleInstanceInteractively(
             let disabledInPage = Set(pageItems.enumerated().compactMap { idx, item in
                 item.matches > 0 ? nil : idx
             })
-            printSelectableTableWithDisabled(
+            lines.append(contentsOf: selectableTableWithDisabledLines(
                 headers: ["#", "INSTANCE", "MC", "LOADER", "MATCHES"],
                 rows: rows,
                 selectedIndex: selected - pageInfo.start,
                 disabledIndices: disabledInPage
-            )
+            ))
+            renderer.render(lines)
             needsRender = false
         }
 
@@ -1642,10 +1735,12 @@ func chooseCompatibleInstanceInteractively(
             }
         case .enter:
             if meta[selected].matches > 0 {
+                renderer.reset()
                 clearScreen()
                 return meta[selected].name
             }
         case .quit, .escape:
+            renderer.reset()
             clearScreen()
             return nil
         default:
@@ -1716,6 +1811,7 @@ func runGameListTUI(instances: [String], title: String = localizeText("实例列
     var view: View = .list
     var lastWidth = -1
     var needsRender = true
+    var renderer = TUIFrameRenderer()
 
     var raw = TerminalRawMode()
     guard raw.enable() else {
@@ -1737,15 +1833,17 @@ func runGameListTUI(instances: [String], title: String = localizeText("实例列
             case .list:
                 let pageSize = interactivePageSize()
                 let pageInfo = pagedBounds(total: instances.count, selectedIndex: selected, pageSize: pageSize)
-                clearScreen()
-                print(stylize(title, ANSI.bold + ANSI.cyan))
-                print(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · q 退出"), ANSI.yellow))
-                print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-                print("")
+                var lines: [String] = []
+                lines.append(stylize(title, ANSI.bold + ANSI.cyan))
+                lines.append(stylize(localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 详情 · q 退出"), ANSI.yellow))
+                lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+                lines.append("")
                 let pageItems = Array(instances[pageInfo.start..<pageInfo.end])
                 let rows = pageItems.enumerated().map { [String(pageInfo.start + $0.offset + 1), $0.element] }
-                printSelectableTable(headers: ["#", "INSTANCE"], rows: rows, selectedIndex: selected - pageInfo.start)
+                lines.append(contentsOf: selectableTableLines(headers: ["#", "INSTANCE"], rows: rows, selectedIndex: selected - pageInfo.start))
+                renderer.render(lines)
             case .detail:
+                renderer.reset()
                 clearScreen()
                 print(stylize(localizeText("Enter/Esc 返回列表 · q 退出"), ANSI.yellow))
                 print("")
@@ -1756,6 +1854,7 @@ func runGameListTUI(instances: [String], title: String = localizeText("实例列
 
         switch (view, readInputKey(timeoutMs: 160)) {
         case (_, .quit):
+            renderer.reset()
             clearScreen()
             return
         case (.list, .down):
@@ -1841,17 +1940,19 @@ func parseRequiredResourceType(_ args: [String]) -> String? {
 func chooseResourceTypeInteractively(title: String = localizeText("请选择资源类型")) -> String? {
     let options = ["mod", "shader", "datapack", "resourcepack", "modpack"]
     var selected = 0
+    var renderer = TUIFrameRenderer()
     var raw = TerminalRawMode()
     guard raw.enable() else { return options.first }
     defer { raw.disable() }
 
     while true {
-        clearScreen()
-        print(stylize(title, ANSI.bold + ANSI.cyan))
-        print(stylize(localizeText("↑/↓/j/k 选择 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
-        print("")
+        var lines: [String] = []
+        lines.append(stylize(title, ANSI.bold + ANSI.cyan))
+        lines.append(stylize(localizeText("↑/↓/j/k 选择 · Enter 确认 · q/Esc 取消"), ANSI.yellow))
+        lines.append("")
         let rows = options.enumerated().map { [String($0.offset + 1), $0.element] }
-        printSelectableTable(headers: ["#", "TYPE"], rows: rows, selectedIndex: selected)
+        lines.append(contentsOf: selectableTableLines(headers: ["#", "TYPE"], rows: rows, selectedIndex: selected))
+        renderer.render(lines)
 
         switch readInputKey(timeoutMs: 160) {
         case .down:
@@ -1859,9 +1960,11 @@ func chooseResourceTypeInteractively(title: String = localizeText("请选择资�
         case .up:
             selected = max(0, selected - 1)
         case .enter:
+            renderer.reset()
             clearScreen()
             return options[selected]
         case .quit, .escape:
+            renderer.reset()
             clearScreen()
             return nil
         default:

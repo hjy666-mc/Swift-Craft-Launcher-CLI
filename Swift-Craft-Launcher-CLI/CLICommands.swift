@@ -1402,25 +1402,26 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: versions.count, selectedIndex: versionIndex, pageSize: pageSize)
         renderer.reset()
-        clearScreen()
-        print(stylize(localizeText("安装对话框"), ANSI.bold + ANSI.cyan))
-        print(stylize(localizeText("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出"), ANSI.yellow))
+        var lines: [String] = []
+        lines.append(stylize(localizeText("安装对话框"), ANSI.bold + ANSI.cyan))
+        lines.append(stylize(localizeText("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出"), ANSI.yellow))
         let detail = detailCache[hit.project_id]
         let type = detail?.project_type ?? "mod"
         let targetText = type == "modpack"
             ? localizeText("本地安装整合包")
             : L("%@=%@", localizeText("实例"), selectedInstance.isEmpty ? localizeText("<未选择>") : selectedInstance)
-        print(stylize(L("%@=%@  %@  %@=%@", localizeText("项目"), hit.title, targetText, localizeText("类型"), type), ANSI.gray))
+        lines.append(stylize(L("%@=%@  %@  %@=%@", localizeText("项目"), hit.title, targetText, localizeText("类型"), type), ANSI.gray))
         if type != "modpack", !selectedInstance.isEmpty {
             let record = queryGameRecord(instance: selectedInstance)
             let gv = (record?["gameVersion"] as? String) ?? "-"
             let loader = (record?["modLoader"] as? String) ?? "-"
-            print(stylize(L("%@: MC=%@ Loader=%@", localizeText("过滤条件"), gv, loader), ANSI.gray))
+            lines.append(stylize(L("%@: MC=%@ Loader=%@", localizeText("过滤条件"), gv, loader), ANSI.gray))
         }
-        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-        print("")
+        lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+        lines.append("")
         if versions.isEmpty {
-            print(stylize(localizeText("无可用版本（与实例版本不匹配）"), ANSI.red))
+            lines.append(stylize(localizeText("无可用版本（与实例版本不匹配）"), ANSI.red))
+            renderer.render(lines)
             return
         }
         let pageItems = Array(versions[pageInfo.start..<pageInfo.end])
@@ -1434,11 +1435,12 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
                 trimColumn(ver.date_published ?? "-", max: 19)
             ]
         }
-        printSelectableTable(
+        lines.append(contentsOf: selectableTableLines(
             headers: ["#", "VERSION", "TYPE", "LOADERS", "MC", "PUBLISHED"],
             rows: rows,
             selectedIndex: versionIndex - pageInfo.start
-        )
+        ))
+        renderer.render(lines)
     }
 
     func versionsForCurrent() -> [ModrinthVersion] {
@@ -1727,23 +1729,24 @@ func runResourceSearchTUI(
         let pageSize = interactivePageSize()
         let pageInfo = pagedBounds(total: versions.count, selectedIndex: versionIndex, pageSize: pageSize)
         renderer.reset()
-        clearScreen()
-        print(stylize(localizeText("安装对话框"), ANSI.bold + ANSI.cyan))
-        print(stylize(localizeText("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出"), ANSI.yellow))
+        var lines: [String] = []
+        lines.append(stylize(localizeText("安装对话框"), ANSI.bold + ANSI.cyan))
+        lines.append(stylize(localizeText("↑/↓/j/k 选择版本 · ←/→/h/l 翻页 · Enter 安装 · Esc 返回详情 · q 退出"), ANSI.yellow))
         let targetText = type == "modpack"
             ? localizeText("本地安装整合包")
             : L("%@=%@", localizeText("实例"), selectedInstance.isEmpty ? localizeText("<未选择>") : selectedInstance)
-        print(stylize(L("%@=%@  %@  %@=%@", localizeText("项目"), hit.title, targetText, localizeText("类型"), type), ANSI.gray))
+        lines.append(stylize(L("%@=%@  %@  %@=%@", localizeText("项目"), hit.title, targetText, localizeText("类型"), type), ANSI.gray))
         if type != "modpack", !selectedInstance.isEmpty {
             let record = queryGameRecord(instance: selectedInstance)
             let gv = (record?["gameVersion"] as? String) ?? "-"
             let loader = (record?["modLoader"] as? String) ?? "-"
-            print(stylize(L("%@: MC=%@ Loader=%@", localizeText("过滤条件"), gv, loader), ANSI.gray))
+            lines.append(stylize(L("%@: MC=%@ Loader=%@", localizeText("过滤条件"), gv, loader), ANSI.gray))
         }
-        print(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
-        print("")
+        lines.append(stylize(L("page_format", pageInfo.page + 1, pageInfo.maxPage + 1), ANSI.gray))
+        lines.append("")
         if versions.isEmpty {
-            print(stylize(localizeText("无可用版本（与实例版本不匹配）"), ANSI.red))
+            lines.append(stylize(localizeText("无可用版本（与实例版本不匹配）"), ANSI.red))
+            renderer.render(lines)
             return
         }
         let pageItems = Array(versions[pageInfo.start..<pageInfo.end])
@@ -1757,11 +1760,12 @@ func runResourceSearchTUI(
                 trimColumn(ver.date_published ?? "-", max: 19)
             ]
         }
-        printSelectableTable(
+        lines.append(contentsOf: selectableTableLines(
             headers: ["#", "VERSION", "TYPE", "LOADERS", "MC", "PUBLISHED"],
             rows: rows,
             selectedIndex: versionIndex - pageInfo.start
-        )
+        ))
+        renderer.render(lines)
     }
 
     var raw = TerminalRawMode()
