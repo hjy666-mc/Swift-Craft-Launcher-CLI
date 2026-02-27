@@ -64,6 +64,8 @@
 "help_game_search_block" = "  Search local instances by keyword (table output)\n  Options:\n    --sort <name|length>  Sort field\n    --order <asc|desc>    Sort order\n  Example: scl game search fabric";
 "help_game_config_cmd" = "scl game config <instance>";
 "help_game_config_block" = "  Show instance and extra options config (table output)\n  Example: scl game config vanilla-1.20";
+"help_game_log_cmd" = "scl game log [--type <latest|crash>] [--instance <name>]";
+"help_game_log_block" = "  View latest log or crash report.\n  In interactive mode, choose type and instance.\n  Options:\n    --type <latest|crash>\n    --instance <name>\n    --print   print log content\n    --path    print log file path\n    --open    open log file\n  Example:\n    scl game log --type latest --instance my-pack --print";
 "help_game_create_cmd" = "scl game create [options]";
 "help_game_create_block" = "  Create instance via main app (CLI does not reimplement install)\n  Options:\n    --modloader <vanilla|fabric|forge|neoforge|quilt>\n    --gameversion <version>   e.g. 1.21.1\n    --name <instance>         instance name\n  Note:\n    If options are omitted, use interactive selection\n  Example:\n    scl game create --modloader fabric --gameversion 1.21.1 --name my-fabric";
 "help_game_launch_cmd" = "scl game launch [instance] [options]";
@@ -140,6 +142,7 @@
 "查看实例状态" = "Show instance status";
 "搜索实例" = "Search instances";
 "查看实例配置" = "Show instance config";
+"查看实例日志" = "View instance logs";
 "创建实例" = "Create instance";
 "启动实例" = "Launch instance";
 "停止实例" = "Stop instance";
@@ -398,6 +401,16 @@
 "无资源文件" = "No resource files";
 "未找到可卸载的内容" = "Nothing to uninstall";
 "未知 game 子命令" = "Unknown game subcommand";
+"JSON 模式下请使用: scl game log --type <latest|crash> --instance <name> --json" = "In JSON mode, use: scl game log --type <latest|crash> --instance <name> --json";
+"选择日志类型" = "Select log type";
+"类型" = "Type";
+"选择实例" = "Select instance";
+"选择查看方式" = "Select view mode";
+"方式" = "Mode";
+"日志类型不支持，请使用 latest 或 crash" = "Unsupported log type, use latest or crash";
+"未找到崩溃日志" = "No crash report found";
+"日志文件不存在: %@" = "Log file not found: %@";
+"无法打开日志文件: %@" = "Unable to open log file: %@";
 "未知错误" = "Unknown error";
 "本地创建失败" = "Local creation failed";
 "本地创建完成" = "Local creation complete";
@@ -464,6 +477,7 @@
 "用法错误：缺少 <keyword>" = "Usage error: missing <keyword>";
 "用法错误：缺少 <name>" = "Usage error: missing <name>";
 "用法错误：缺少 <versionOrInstance>" = "Usage error: missing <versionOrInstance>";
+"用法错误：缺少 --type 和 --instance（或在交互终端中直接运行）" = "Usage error: missing --type and --instance (or run in interactive terminal)";
 "等待 Microsoft 认证完成" = "Waiting for Microsoft authentication";
 "简介:" = "Summary:";
 "缺少 --gameversion（非交互终端请显式指定）" = "Missing --gameversion (specify explicitly in non-interactive terminal)";

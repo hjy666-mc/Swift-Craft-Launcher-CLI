@@ -245,3 +245,19 @@
 "help_lang_show_block" = "  查看当前语言";
 "help_lang_path_cmd" = "scl lang path";
 "help_lang_path_block" = "  显示语言包目录";
+
+"查看实例日志" = "查看实例日志";
+"选择日志类型" = "选择日志类型";
+"类型" = "类型";
+"选择实例" = "选择实例";
+"选择查看方式" = "选择查看方式";
+"方式" = "方式";
+"日志类型不支持，请使用 latest 或 crash" = "日志类型不支持，请使用 latest 或 crash";
+"未找到崩溃日志" = "未找到崩溃日志";
+"日志文件不存在: %@" = "日志文件不存在: %@";
+"无法打开日志文件: %@" = "无法打开日志文件: %@";
+"JSON 模式下请使用: scl game log --type <latest|crash> --instance <name> --json" = "JSON 模式下请使用: scl game log --type <latest|crash> --instance <name> --json";
+"用法错误：缺少 --type 和 --instance（或在交互终端中直接运行）" = "用法错误：缺少 --type 和 --instance（或在交互终端中直接运行）";
+
+"help_game_log_cmd" = "scl game log [--type <latest|crash>] [--instance <name>]";
+"help_game_log_block" = "  查看最新日志或崩溃日志\n  交互模式下先选类型再选实例\n  选项:\n    --type <latest|crash>\n    --instance <name>\n    --print   打印日志内容\n    --path    输出日志路径\n    --open    打开日志文件\n  示例:\n    scl game log --type latest --instance my-pack --print";
