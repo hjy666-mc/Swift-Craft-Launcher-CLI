@@ -35,6 +35,7 @@ struct SCL: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scl",
         abstract: "Swift Craft Launcher CLI",
+        version: CLIAppInfo.version,
         subcommands: [SetCommand.self, GetCommand.self, SearchCommand.self, GameCommand.self, AccountCommand.self, ResourcesCommand.self, CompletionCommand.self, ManCommand.self, LangCommand.self, OpenCommand.self, UninstallCommand.self, ShellCommand.self]
     )
     @OptionGroup var global: GlobalOptions
