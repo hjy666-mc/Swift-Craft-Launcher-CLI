@@ -1928,6 +1928,140 @@ func listInstances() -> [String] {
     return names.sorted()
 }
 
+private func latestCrashReportURL(instance: String) -> URL? {
+    let dir = profileRoot().appendingPathComponent(instance, isDirectory: true).appendingPathComponent("crash-reports", isDirectory: true)
+    guard let entries = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]) else {
+        return nil
+    }
+    let sorted = entries.sorted { a, b in
+        let ta = (try? a.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date.distantPast
+        let tb = (try? b.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date.distantPast
+        return ta > tb
+    }
+    return sorted.first
+}
+
+private func latestLogURL(instance: String) -> URL {
+    profileRoot()
+        .appendingPathComponent(instance, isDirectory: true)
+        .appendingPathComponent("logs", isDirectory: true)
+        .appendingPathComponent("latest.log")
+}
+
+private func openLogWithPager(_ url: URL) {
+    openLogWithAction(url: url, action: .auto)
+}
+
+enum LogAction {
+    case auto
+    case print
+    case path
+    case open
+}
+
+private func openLogWithAction(url: URL, action: LogAction) {
+    if !fm.fileExists(atPath: url.path) {
+        fail(L("日志文件不存在: %@", url.path))
+        return
+    }
+
+    if jsonOutputEnabled {
+        var payload: [String: Any] = [
+            "ok": true,
+            "type": "log",
+            "action": actionLabel(action),
+            "path": url.path
+        ]
+        if action == .print || action == .auto {
+            let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+            payload["content"] = content
+        }
+        printJSON(payload)
+        return
+    }
+
+    switch action {
+    case .path:
+        print(shellEscapePath(url.path))
+    case .open:
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        process.arguments = [url.path]
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            fail(L("无法打开日志文件: %@", url.path))
+        }
+    case .print:
+        let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        print(content)
+    case .auto:
+        if isatty(STDIN_FILENO) == 1 && isatty(STDOUT_FILENO) == 1 {
+            let pager = Process()
+            pager.executableURL = URL(fileURLWithPath: "/usr/bin/less")
+            pager.arguments = ["-R", url.path]
+            do {
+                try pager.run()
+                pager.waitUntilExit()
+            } catch {
+                let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+                print(content)
+            }
+        } else {
+            let content = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+            print(content)
+        }
+    }
+}
+
+private func actionLabel(_ action: LogAction) -> String {
+    switch action {
+    case .auto: return "auto"
+    case .print: return "print"
+    case .path: return "path"
+    case .open: return "open"
+    }
+}
+
+private func shellEscapePath(_ path: String) -> String {
+    let specials: Set<Character> = [" ", "(", ")", "&", ";", "'", "\"", "[", "]", "{", "}", "!", "$", "`", "|", "<", ">", "?"]
+    var out = String()
+    out.reserveCapacity(path.count)
+    for ch in path {
+        if specials.contains(ch) {
+            out.append("\\")
+        }
+        out.append(ch)
+    }
+    return out
+}
+
+func showGameLog(type: String, instance: String, action: LogAction) {
+    let instances = listInstances()
+    guard instances.contains(instance) else {
+        fail(L("实例不存在: %@", instance))
+        return
+    }
+    switch type {
+    case "latest":
+        let url = latestLogURL(instance: instance)
+        openLogWithAction(url: url, action: action)
+    case "crash":
+        guard let url = latestCrashReportURL(instance: instance) else {
+            if jsonOutputEnabled {
+                fail(localizeText("未找到崩溃日志"))
+            } else {
+                warn(localizeText("未找到崩溃日志"))
+            }
+            return
+        }
+        openLogWithAction(url: url, action: action)
+    default:
+        fail(localizeText("日志类型不支持，请使用 latest 或 crash"))
+    }
+}
+
 func resourceTypeFromArgs(_ args: [String]) -> String {
     if let t = valueOf("--type", in: args) {
         let raw = t.lowercased()

@@ -267,6 +267,11 @@ Search local instances.
 .B scl game config <instance>
 Show instance configuration.
 .TP
+.B scl game log [--type <latest|crash>] [--instance <name>] [--print|--path|--open]
+Show latest log or crash report for an instance.
+Use --print to output content, --path to output log path, --open to open the file.
+In interactive mode, select type and instance.
+.TP
 .B scl game create [--modloader <type>] [--gameversion <version>] [--name <instance>]
 Create instance by delegating to main app.
 Type:
@@ -404,11 +409,11 @@ func zshCompletionScript() -> String {
           ;;
         game)
           local -a gameSubs
-          gameSubs=('list' 'status' 'stutue' 'search' 'config' 'create' 'launch' 'stop' 'delete' '--help')
+          gameSubs=('list' 'status' 'stutue' 'search' 'config' 'log' 'create' 'launch' 'stop' 'delete' '--help')
           if (( CURRENT == 3 )); then
             _describe 'game subcommand' gameSubs
           else
-            _values 'game options' '--help' '--json' '--memory' '--java' '--account' '--sort' '--order' '--all' '--modloader' '--gameversion' '--name'
+            _values 'game options' '--help' '--json' '--memory' '--java' '--account' '--sort' '--order' '--all' '--modloader' '--gameversion' '--name' '--type' '--instance' '--print' '--path' '--open'
           fi
           ;;
         account)

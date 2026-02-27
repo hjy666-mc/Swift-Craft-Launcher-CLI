@@ -110,6 +110,7 @@ func handleGame(args: [String]) {
     case "status", "stutue": gameStatus(args: subArgs)
     case "search": gameSearch(args: subArgs)
     case "config": gameConfig(args: subArgs)
+    case "log": gameLog(args: subArgs)
     case "create": gameCreate(args: subArgs)
     case "launch": gameLaunch(args: subArgs)
     case "stop": gameStop(args: subArgs)
@@ -204,6 +205,71 @@ func gameConfig(args: [String]) {
     ]
 
     printTable(headers: ["KEY", "VALUE"], rows: baseRows)
+}
+
+func gameLog(args: [String]) {
+    if args.contains("--help") || args.contains("-h") {
+        printGameLogHelp()
+        return
+    }
+
+    let typeArg = valueOf("--type", in: args)?.lowercased()
+    let instanceArg = valueOf("--instance", in: args)
+    let wantPrint = args.contains("--print")
+    let wantPath = args.contains("--path")
+    let wantOpen = args.contains("--open")
+
+    if jsonOutputEnabled {
+        guard let typeArg, let instanceArg else {
+            fail(localizeText("JSON 模式下请使用: scl game log --type <latest|crash> --instance <name> --json"))
+            return
+        }
+        if wantOpen {
+            fail(localizeText("JSON 模式不支持 --open"))
+            return
+        }
+        let action: LogAction = wantPath ? .path : (wantPrint ? .print : .print)
+        showGameLog(type: typeArg, instance: instanceArg, action: action)
+        return
+    }
+
+    let isInteractive = isatty(STDIN_FILENO) == 1 && isatty(STDOUT_FILENO) == 1
+    if !isInteractive {
+        guard let typeArg, let instanceArg else {
+            fail(localizeText("用法错误：缺少 --type 和 --instance（或在交互终端中直接运行）"))
+            return
+        }
+        let action: LogAction = wantPath ? .path : (wantOpen ? .open : (wantPrint ? .print : .auto))
+        showGameLog(type: typeArg, instance: instanceArg, action: action)
+        return
+    }
+
+    let type = typeArg ?? chooseOptionInteractively(
+        title: localizeText("选择日志类型"),
+        header: localizeText("类型"),
+        options: ["latest", "crash"]
+    )
+    guard let type else { return }
+
+    let instance = instanceArg ?? chooseInstanceInteractively(title: localizeText("选择实例"))
+    guard let instance else { return }
+
+    var action: LogAction = wantPath ? .path : (wantOpen ? .open : (wantPrint ? .print : .auto))
+    if action == .auto {
+        if let picked = chooseOptionInteractively(
+            title: localizeText("选择查看方式"),
+            header: localizeText("方式"),
+            options: ["auto", "print", "path", "open"]
+        ) {
+            switch picked {
+            case "print": action = .print
+            case "path": action = .path
+            case "open": action = .open
+            default: action = .auto
+            }
+        }
+    }
+    showGameLog(type: type, instance: instance, action: action)
 }
 
 func gameLaunch(args: [String]) {

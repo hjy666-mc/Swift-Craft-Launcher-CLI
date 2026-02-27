@@ -87,7 +87,7 @@ struct GameCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "game",
         abstract: localizeText("游戏实例管理"),
-        subcommands: [GameList.self, GameStatus.self, GameSearch.self, GameConfig.self, GameCreate.self, GameLaunch.self, GameStop.self, GameDelete.self]
+        subcommands: [GameList.self, GameStatus.self, GameSearch.self, GameConfig.self, GameLog.self, GameCreate.self, GameLaunch.self, GameStop.self, GameDelete.self]
     )
     @OptionGroup var global: GlobalOptions
 }
@@ -146,6 +146,27 @@ struct GameConfig: ParsableCommand {
     mutating func run() throws {
         applyGlobal(global)
         gameConfig(args: [instance])
+    }
+}
+
+struct GameLog: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "log", abstract: localizeText("查看实例日志"))
+    @OptionGroup var global: GlobalOptions
+    @Option(name: .long) var type: String?
+    @Option(name: .long) var instance: String?
+    @Flag(name: .long) var print: Bool = false
+    @Flag(name: .long) var path: Bool = false
+    @Flag(name: .long) var open: Bool = false
+
+    mutating func run() throws {
+        applyGlobal(global)
+        var args: [String] = []
+        appendOption(&args, flag: "--type", value: type)
+        appendOption(&args, flag: "--instance", value: instance)
+        appendFlag(&args, flag: "--print", enabled: print)
+        appendFlag(&args, flag: "--path", enabled: path)
+        appendFlag(&args, flag: "--open", enabled: open)
+        gameLog(args: args)
     }
 }
 

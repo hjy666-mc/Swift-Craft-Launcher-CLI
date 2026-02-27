@@ -120,6 +120,9 @@ func printGameHelp() {
 \(stylize(L("help_game_config_cmd"), ANSI.bold + ANSI.blue))
 \(L("help_game_config_block"))
 
+\(stylize(L("help_game_log_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_log_block"))
+
 \(stylize(L("help_game_create_cmd"), ANSI.bold + ANSI.blue))
 \(L("help_game_create_block"))
 
@@ -130,6 +133,21 @@ func printGameHelp() {
 \(L("help_game_stop_block"))
 
 \(L("help_game_controls_block"))
+""")
+}
+
+func printGameLogHelp() {
+    if jsonOutputEnabled {
+        printJSON([
+            "ok": true,
+            "type": "help",
+            "topic": "game log"
+        ])
+        return
+    }
+    print("""
+\(stylize(L("help_game_log_cmd"), ANSI.bold + ANSI.blue))
+\(L("help_game_log_block"))
 """)
 }
 
