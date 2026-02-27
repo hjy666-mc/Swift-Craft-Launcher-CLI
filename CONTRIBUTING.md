@@ -1,6 +1,5 @@
 # 贡献指南
-
-本仓库采用「dev 驱动 + 功能分支 + PR」流程。请严格遵循以下规范。
+从
 
 ## 分支与流程
 
@@ -39,18 +38,18 @@ git checkout dev
 git pull --rebase origin dev
 
 # 从 dev 创建功能分支
-git checkout -b feat/your-feature
+git checkout -b feat,docs,bugfix/name
 
 # 开发 + 提交
 git add .
-git commit -m "feat: your feature"
+git commit -m "commit_messages"
 
 # dev 有更新时同步到功能分支
 git fetch origin
 git rebase origin/dev
 
 # 推送并发起 PR
-git push -u origin feat/your-feature
+git push -u origin feat,docs,bugfix/name
 ```
 
 ## 其他约定

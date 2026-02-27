@@ -1356,6 +1356,10 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
             print(stylize(localizeText("资源详情"), ANSI.bold + ANSI.cyan))
             print(stylize(localizeText("Enter 打开安装版本选择 · o 打开网页 · Esc 返回列表 · q 退出"), ANSI.yellow))
             print("")
+            if detail == nil {
+                print(stylize(localizeText("加载中..."), ANSI.gray))
+                return
+            }
             let categories = detail?.categories?.joined(separator: ", ") ?? hit.categories?.joined(separator: ", ") ?? "-"
             let versionsCount = detail?.versions?.count ?? hit.versions?.count ?? 0
             printTable(headers: ["KEY", "VALUE"], rows: [
@@ -1443,6 +1447,27 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
         renderer.render(lines)
     }
 
+    func loadDetailIfNeeded(_ hit: ModrinthHit) {
+        if detailCache[hit.project_id] == nil {
+            renderer.reset()
+            clearScreen()
+            print(stylize(localizeText("资源详情"), ANSI.bold + ANSI.cyan))
+            print(stylize(localizeText("加载中..."), ANSI.gray))
+            if let d = fetchProjectDetail(projectId: hit.project_id) {
+                detailCache[hit.project_id] = d
+            }
+        }
+    }
+
+    func loadVersionsIfNeeded(_ hit: ModrinthHit) {
+        if versionsCache[hit.project_id] == nil {
+            renderer.reset()
+            clearScreen()
+            print(stylize(localizeText("加载中..."), ANSI.gray))
+            versionsCache[hit.project_id] = fetchProjectVersions(projectId: hit.project_id)
+        }
+    }
+
     func versionsForCurrent() -> [ModrinthVersion] {
         guard let hit = items[selectedIndex].modrinth else { return [] }
         if versionsCache[hit.project_id] == nil {
@@ -1467,14 +1492,6 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
             case .list:
                 renderList()
             case .detail:
-                if let hit = current.modrinth {
-                    if detailCache[hit.project_id] == nil, let d = fetchProjectDetail(projectId: hit.project_id) {
-                        detailCache[hit.project_id] = d
-                    }
-                    if versionsCache[hit.project_id] == nil {
-                        versionsCache[hit.project_id] = fetchProjectVersions(projectId: hit.project_id)
-                    }
-                }
                 renderDetail(for: current)
             case .install:
                 guard let hit = current.modrinth else { view = .detail; needsRender = true; continue }
@@ -1542,9 +1559,15 @@ func runGlobalSearchTUI(items: [GlobalItem], query: String, limit: Int, initialP
             }
         case (.list, .enter):
             view = .detail
+            if let hit = current.modrinth {
+                loadDetailIfNeeded(hit)
+            }
             needsRender = true
         case (.detail, .enter):
             if current.modrinth != nil {
+                if let hit = current.modrinth {
+                    loadVersionsIfNeeded(hit)
+                }
                 view = .install
                 needsRender = true
             }
@@ -1705,6 +1728,10 @@ func runResourceSearchTUI(
         print(stylize(localizeText("资源详情"), ANSI.bold + ANSI.cyan))
         print(stylize(localizeText("Enter 打开安装版本选择 · Esc 返回列表 · q 退出"), ANSI.yellow))
         print("")
+        if detail == nil {
+            print(stylize(localizeText("加载中..."), ANSI.gray))
+            return
+        }
         let categories = detail?.categories?.joined(separator: ", ") ?? hit.categories?.joined(separator: ", ") ?? "-"
         let versionsCount = detail?.versions?.count ?? hit.versions?.count ?? 0
         printTable(headers: ["KEY", "VALUE"], rows: [
@@ -1768,6 +1795,27 @@ func runResourceSearchTUI(
         renderer.render(lines)
     }
 
+    func loadDetailIfNeeded(_ hit: ModrinthHit) {
+        if detailCache[hit.project_id] == nil {
+            renderer.reset()
+            clearScreen()
+            print(stylize(localizeText("资源详情"), ANSI.bold + ANSI.cyan))
+            print(stylize(localizeText("加载中..."), ANSI.gray))
+            if let d = fetchProjectDetail(projectId: hit.project_id) {
+                detailCache[hit.project_id] = d
+            }
+        }
+    }
+
+    func loadVersionsIfNeeded(_ hit: ModrinthHit) {
+        if versionsCache[hit.project_id] == nil {
+            renderer.reset()
+            clearScreen()
+            print(stylize(localizeText("加载中..."), ANSI.gray))
+            versionsCache[hit.project_id] = fetchProjectVersions(projectId: hit.project_id)
+        }
+    }
+
     var raw = TerminalRawMode()
     guard raw.enable() else {
         warn(localizeText("当前终端不支持交互模式，已降级到普通列表输出"))
@@ -1824,17 +1872,8 @@ func runResourceSearchTUI(
             case .list:
                 renderList()
             case .detail:
-                if detailCache[current.project_id] == nil, let d = fetchProjectDetail(projectId: current.project_id) {
-                    detailCache[current.project_id] = d
-                }
-                if versionsCache[current.project_id] == nil {
-                    versionsCache[current.project_id] = fetchProjectVersions(projectId: current.project_id)
-                }
                 renderDetail(for: current)
             case .install:
-                if versionsCache[current.project_id] == nil {
-                    versionsCache[current.project_id] = fetchProjectVersions(projectId: current.project_id)
-                }
                 let versions = filteredVersions(for: current.project_id)
                 renderInstall(for: current, versions: versions)
             }
@@ -1892,6 +1931,7 @@ func runResourceSearchTUI(
             }
         case (.list, .enter):
             view = .detail
+            loadDetailIfNeeded(current)
             statusLine = localizeText("Esc 返回列表 · Enter 进入安装")
             needsRender = true
         case (.list, .changeType):
@@ -1937,6 +1977,7 @@ func runResourceSearchTUI(
             statusLine = localizeText("↑/↓/j/k 选择 · ←/→/h/l 翻页 · Enter 进入详情 · q 退出")
             needsRender = true
         case (.detail, .enter):
+            loadVersionsIfNeeded(current)
             if type != "modpack" {
                 let projectVersions = versionsCache[current.project_id] ?? []
                 guard let picked = chooseCompatibleInstanceInteractively(
