@@ -402,6 +402,7 @@
 "未找到可卸载的内容" = "Nothing to uninstall";
 "未知 game 子命令" = "Unknown game subcommand";
 "JSON 模式下请使用: scl game log --type <latest|crash> --instance <name> --json" = "In JSON mode, use: scl game log --type <latest|crash> --instance <name> --json";
+"JSON 模式不支持 --open" = "JSON mode does not support --open";
 "选择日志类型" = "Select log type";
 "类型" = "Type";
 "选择实例" = "Select instance";

@@ -257,6 +257,7 @@
 "日志文件不存在: %@" = "日志文件不存在: %@";
 "无法打开日志文件: %@" = "无法打开日志文件: %@";
 "JSON 模式下请使用: scl game log --type <latest|crash> --instance <name> --json" = "JSON 模式下请使用: scl game log --type <latest|crash> --instance <name> --json";
+"JSON 模式不支持 --open" = "JSON 模式不支持 --open";
 "用法错误：缺少 --type 和 --instance（或在交互终端中直接运行）" = "用法错误：缺少 --type 和 --instance（或在交互终端中直接运行）";
 
 "help_game_log_cmd" = "scl game log [--type <latest|crash>] [--instance <name>]";

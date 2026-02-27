@@ -224,7 +224,11 @@ func gameLog(args: [String]) {
             fail(localizeText("JSON 模式下请使用: scl game log --type <latest|crash> --instance <name> --json"))
             return
         }
-        let action: LogAction = wantPath ? .path : (wantOpen ? .open : (wantPrint ? .print : .print))
+        if wantOpen {
+            fail(localizeText("JSON 模式不支持 --open"))
+            return
+        }
+        let action: LogAction = wantPath ? .path : (wantPrint ? .print : .print)
         showGameLog(type: typeArg, instance: instanceArg, action: action)
         return
     }
