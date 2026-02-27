@@ -1,6 +1,34 @@
 import Foundation
 import Darwin
 
+struct CLIAppInfo {
+    static let version: String = {
+        let env = ProcessInfo.processInfo.environment["SCL_VERSION"]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !env.isEmpty { return env }
+        let exePath = CommandLine.arguments.first ?? ""
+        let mtime = (try? fm.attributesOfItem(atPath: exePath)[.modificationDate]) as? Date
+        let baseDate = mtime ?? Date()
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyMMdd"
+        let dateStr = formatter.string(from: baseDate)
+        let hex = randomHex(count: 6)
+        return "\(dateStr)F\(hex)-dev+local"
+    }()
+}
+
+private func randomHex(count: Int) -> String {
+    let chars = Array("0123456789abcdef")
+    var out = String()
+    out.reserveCapacity(count)
+    for _ in 0..<count {
+        let idx = Int.random(in: 0..<chars.count)
+        out.append(chars[idx])
+    }
+    return out
+}
+
 struct CLIConfig: Codable {
     var gameDir: String
     var javaPath: String
