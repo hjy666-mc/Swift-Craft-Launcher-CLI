@@ -2025,14 +2025,14 @@ private func actionLabel(_ action: LogAction) -> String {
 }
 
 private func shellEscapePath(_ path: String) -> String {
+    let specials: Set<Character> = [" ", "(", ")", "&", ";", "'", "\"", "[", "]", "{", "}", "!", "$", "`", "|", "<", ">", "?"]
     var out = String()
     out.reserveCapacity(path.count)
     for ch in path {
-        if ch == " " {
-            out.append("\\ ")
-        } else {
-            out.append(ch)
+        if specials.contains(ch) {
+            out.append("\\")
         }
+        out.append(ch)
     }
     return out
 }
